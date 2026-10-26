@@ -186,6 +186,24 @@ final class GradeStore: ObservableObject {
     var expectedTaskCount: Int { expectedTaskCount(for: nil) }
     var currentStreak: Int { streakLength(from: Date()) }
     var didStudyToday: Bool { studyDays.contains(dateKey(for: Date())) }
+    var missedLectiveDays: Int {
+        let calendar = Calendar.current
+        var day = calendar.startOfDay(for: Date())
+        if didStudyToday { return 0 }
+        if isLective(day), let previous = calendar.date(byAdding: .day, value: -1, to: day) { day = previous }
+        var missed = 0
+        while missed <= 2 {
+            if isFrozen(day) { }
+            else if isLective(day) {
+                if studyDays.contains(dateKey(for: day)) { break }
+                missed += 1
+            }
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else { break }
+            day = previous
+        }
+        return missed
+    }
+    var remainingStreakGrace: Int { max(0, 2 - missedLectiveDays) }
     var bestStreak: Int {
         let dates = studyDays.compactMap { date(from: $0) }.filter(isLective).sorted()
         guard !dates.isEmpty else { return 0 }
@@ -755,8 +773,10 @@ struct TodayView: View {
                             .font(.headline.bold()).foregroundStyle(AppStyle.navy)
                         Text(store.currentStreak == 0 ? "Marca una tarea para iniciar la racha." : "Mejor: \(store.bestStreak) días")
                             .font(.caption).foregroundStyle(AppStyle.slate)
-                        Text("Días lectivos · margen de 2 · congeladores: \(store.freezesThisWeek)/2")
-                            .font(.caption2).foregroundStyle(AppStyle.slate)
+                        Text(store.didStudyToday
+                             ? "Hoy ya cuenta · margen completo: 2 días · congeladores: \(store.freezesThisWeek)/2"
+                             : "\(store.missedLectiveDays) días lectivos sin actividad · te quedan \(store.remainingStreakGrace) de margen · congeladores: \(store.freezesThisWeek)/2")
+                            .font(.caption2).foregroundStyle(store.remainingStreakGrace == 0 ? Color.red : AppStyle.slate)
                         if store.isLective(Date()) && !store.isFrozen(Date()) && store.freezesThisWeek < 2 {
                             Button("Congelar hoy") { confirmFreeze = true }.buttonStyle(.bordered).font(.caption)
                         }
