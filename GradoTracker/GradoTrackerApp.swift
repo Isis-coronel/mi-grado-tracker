@@ -116,6 +116,15 @@ final class GradeStore: ObservableObject {
     @Published private(set) var liveClasses: [LiveClassRecord] = [] { didSet { saveExtras() } }
     @Published private(set) var events: [TrackerEvent] = [] { didSet { saveExtras() } }
     @Published private(set) var frozenDays: Set<String> = [] { didSet { saveExtras() } }
+    private var courseWeekRanges: [(week: CourseWeek, start: Date, end: Date)] = []
+    private let isoDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
 
     private let storageKey = "universae-arbi-v3"
     private let studyDaysKey = "universae-arbi-study-days-v1"
@@ -129,6 +138,10 @@ final class GradeStore: ObservableObject {
         } else {
             course = CourseData(weeks: [], subjects: [])
         }
+        courseWeekRanges = course.weeks.compactMap { week in
+            guard let start = date(from: week.s), let end = date(from: week.e) else { return nil }
+            return (week, start, end)
+        }.sorted { $0.start < $1.start }
         if let values = UserDefaults.standard.stringArray(forKey: storageKey) {
             completed = Set(values)
         }
@@ -148,53 +161,36 @@ final class GradeStore: ObservableObject {
     var progress: Double { totalTasks == 0 ? 0 : Double(completedCount) / Double(totalTasks) }
     var currentCourseWeek: Int {
         let today = Calendar.current.startOfDay(for: Date())
-        if let activeWeek = course.weeks.first(where: { week in
-            guard let start = date(from: week.s), let end = date(from: week.e) else { return false }
-            return today >= start && today <= end
-        }) {
-            return activeWeek.n
+        if let activeWeek = courseWeekRanges.first(where: { today >= $0.start && today <= $0.end }) {
+            return activeWeek.week.n
         }
-        return course.weeks.last(where: { week in
-            guard let end = date(from: week.e) else { return false }
-            return end < today
-        })?.n ?? 1
+        return courseWeekRanges.last(where: { $0.end < today })?.week.n ?? 1
     }
     func courseWeek(containing selectedDate: Date) -> CourseWeek? {
         let day = Calendar.current.startOfDay(for: selectedDate)
-        if let match = course.weeks.first(where: { week in
-            guard let start = date(from: week.s), let end = date(from: week.e) else { return false }
-            return day >= start && day <= end
-        }) { return match }
-        return course.weeks.last(where: { week in
-            guard let end = date(from: week.e) else { return false }
-            return end < day
-        })
+        if let match = courseWeekRanges.first(where: { day >= $0.start && day <= $0.end }) { return match.week }
+        return courseWeekRanges.last(where: { $0.end < day })?.week
     }
     var referenceWeek: Int {
         let today = Calendar.current.startOfDay(for: Date())
-        if let activeWeek = course.weeks.first(where: { week in
-            guard let start = date(from: week.s), let end = date(from: week.e) else { return false }
-            return today >= start && today <= end
-        }) {
-            return max(0, activeWeek.n - 1)
+        if let activeWeek = courseWeekRanges.first(where: { today >= $0.start && today <= $0.end }) {
+            return max(0, activeWeek.week.n - 1)
         }
-        return course.weeks.last(where: { week in
-            guard let end = date(from: week.e) else { return false }
-            return end < today
-        })?.n ?? 0
+        return courseWeekRanges.last(where: { $0.end < today })?.week.n ?? 0
     }
     var expectedTaskCount: Int { expectedTaskCount(for: nil) }
     var currentStreak: Int { streakLength(from: Date()) }
-    var didStudyToday: Bool { studyDays.contains(dateKey(for: Date())) }
+    var didStudyToday: Bool { isLective(Date()) && studyDays.contains(dateKey(for: Date())) }
     var missedLectiveDays: Int {
         let calendar = Calendar.current
         var day = calendar.startOfDay(for: Date())
+        guard let firstRange = courseWeekRanges.first, let lastRange = courseWeekRanges.last,
+              day >= firstRange.start, day <= lastRange.end else { return 0 }
         if didStudyToday { return 0 }
         if isLective(day), let previous = calendar.date(byAdding: .day, value: -1, to: day) { day = previous }
         var missed = 0
-        while missed <= 2 {
-            if isFrozen(day) { }
-            else if isLective(day) {
+        while day >= firstRange.start && missed <= 2 {
+            if !isFrozen(day), isLective(day) {
                 if studyDays.contains(dateKey(for: day)) { break }
                 missed += 1
             }
@@ -233,11 +229,11 @@ final class GradeStore: ObservableObject {
 
     func expectedTaskCount(for subject: CourseSubject?) -> Int {
         let tasks = subject?.tasks ?? course.subjects.flatMap(\.tasks)
-        let active = course.weeks.first(where: { $0.n == currentCourseWeek })
+        let active = courseWeekRanges.first(where: { $0.week.n == currentCourseWeek })
         let fraction: Double
-        if let active, let start = date(from: active.s), let end = date(from: active.e) {
-            let days = max(1, Calendar.current.dateComponents([.day], from: start, to: end).day ?? 1)
-            let elapsed = min(Double(days + 1), max(0, Double(Calendar.current.dateComponents([.day], from: start, to: Calendar.current.startOfDay(for: Date())).day ?? 0)))
+        if let active {
+            let days = max(1, Calendar.current.dateComponents([.day], from: active.start, to: active.end).day ?? 1)
+            let elapsed = min(Double(days + 1), max(0, Double(Calendar.current.dateComponents([.day], from: active.start, to: Calendar.current.startOfDay(for: Date())).day ?? 0)))
             fraction = min(1, elapsed / Double(days + 1))
         } else { fraction = 1 }
         return tasks.filter { $0.week < currentCourseWeek }.count + Int((Double(tasks.filter { $0.week == currentCourseWeek }.count) * fraction).rounded(.down))
@@ -247,8 +243,8 @@ final class GradeStore: ObservableObject {
         if done > expected { return .ahead(done - expected) }
         if done < expected {
             let gap = expected - done
-            let weeklyLoad = max(1, (subject?.tasks.count ?? totalTasks) / max(course.weeks.count, 1))
-            return gap < weeklyLoad ? .catchingUp(gap) : .behind(gap)
+            let weeklyLoad = max(1, Double(subject?.tasks.count ?? totalTasks) / Double(max(course.weeks.count, 1)))
+            return Double(gap) < weeklyLoad ? .catchingUp(gap) : .behind(gap)
         }
         return .onTrack
     }
@@ -281,6 +277,7 @@ final class GradeStore: ObservableObject {
     func noteKey(subject: CourseSubject, unit: CourseUnit) -> String { "\(subject.code)-U\(unit.number)" }
     func saveNote(_ text: String, subject: CourseSubject, unit: CourseUnit) {
         let key = noteKey(subject: subject, unit: unit)
+        guard unitNotes[key] != text else { return }
         unitNotes[key] = text
         record("Apuntes actualizados: \(subject.abbr), unidad \(unit.number)")
     }
@@ -308,11 +305,17 @@ final class GradeStore: ObservableObject {
         } else { attempts.append(AssessmentAttempt(taskID: task.id, date: Date(), grade: "", difficulty: difficulty)) }
         record("Dificultad de autoevaluación: \(task.title) · \(difficulty.symbol)")
     }
-    func record(_ message: String) { events.insert(TrackerEvent(date: Date(), message: message), at: 0) }
-    func freezeToday() {
+    func record(_ message: String) {
+        events.insert(TrackerEvent(date: Date(), message: message), at: 0)
+        if events.count > 2_000 { events.removeLast(events.count - 2_000) }
+    }
+    @discardableResult
+    func freezeToday() -> Bool {
         let key = dateKey(for: Date())
+        guard isLective(Date()), !frozenDays.contains(key), freezesThisWeek < 2 else { return false }
         frozenDays.insert(key)
         record("Día congelado; el plan restante se desplaza un día")
+        return true
     }
     func isFrozen(_ date: Date) -> Bool { frozenDays.contains(dateKey(for: date)) }
     var freezesThisWeek: Int {
@@ -325,13 +328,9 @@ final class GradeStore: ObservableObject {
         let day = Calendar.current.startOfDay(for: date)
         let key = dateKey(for: day)
         if key == "2026-10-12" || key == "2026-12-07" || (key >= "2026-12-23" && key <= "2027-01-06") || (key >= "2027-03-19" && key <= "2027-04-04") { return false }
-        let spans = course.weeks.compactMap { week -> (Date, Date)? in
-            guard let start = self.date(from: week.s), let end = self.date(from: week.e) else { return nil }
-            return (start, end)
-        }.sorted { $0.0 < $1.0 }
-        guard let first = spans.first, let last = spans.last, day >= first.0, day <= last.1 else { return false }
-        if spans.contains(where: { day >= $0.0 && day <= $0.1 }) { return true }
-        return false
+        guard let first = courseWeekRanges.first, let last = courseWeekRanges.last,
+              day >= first.start, day <= last.end else { return false }
+        return courseWeekRanges.contains { day >= $0.start && day <= $0.end }
     }
 
     func completedCount(for subject: CourseSubject) -> Int {
@@ -343,6 +342,7 @@ final class GradeStore: ObservableObject {
     }
 
     func nextTasks(for subject: CourseSubject, throughWeek: Int? = nil, limit: Int = 5) -> [CourseTask] {
+        guard limit > 0 else { return [] }
         let eligible = subject.tasks.filter { task in throughWeek.map { task.week <= $0 } ?? true }
         let required = eligible.filter { !isComplete($0) && !$0.optional }
         let pending = required.isEmpty ? eligible.filter { !isComplete($0) } : required
@@ -427,16 +427,21 @@ final class GradeStore: ObservableObject {
     private func streakLength(from now: Date) -> Int {
         let calendar = Calendar.current
         var day = calendar.startOfDay(for: now)
+        guard let lastRange = courseWeekRanges.last else { return 0 }
+        if day > lastRange.end { day = lastRange.end }
+        guard let earliestStudyDate = studyDays.compactMap({ date(from: $0) })
+            .filter({ $0 <= day && isLective($0) }).min() else { return 0 }
         if !studyDays.contains(dateKey(for: day)) || !isLective(day) {
             guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else { return 0 }
             day = previous
         }
         var length = 0
         var missedLective = 0
-        while true {
+        while day >= earliestStudyDate {
             if isLective(day) && studyDays.contains(dateKey(for: day)) { length += 1; missedLective = 0 }
             else if isFrozen(day) { }
             else if isLective(day) { missedLective += 1; if missedLective > 2 { break } }
+            if day == earliestStudyDate { break }
             guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else { break }
             day = previous
         }
@@ -444,21 +449,11 @@ final class GradeStore: ObservableObject {
     }
 
     private func dateKey(for date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.timeZone = .current
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: date)
+        isoDateFormatter.string(from: date)
     }
 
     private func date(from value: String) -> Date? {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.timeZone = .current
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.date(from: value).map { Calendar.current.startOfDay(for: $0) }
+        isoDateFormatter.date(from: value).map { Calendar.current.startOfDay(for: $0) }
     }
 }
 
@@ -530,6 +525,12 @@ struct DailyAssignment: Identifiable {
     let period: String
     let subjectCode: String
     var id: String { subjectCode }
+}
+
+struct PlannedTask: Identifiable {
+    let subject: CourseSubject
+    let task: CourseTask
+    var id: String { "\(subject.code)|\(task.id)" }
 }
 
 enum WeeklyStudyPlan {
@@ -748,6 +749,9 @@ struct TodayView: View {
                     }
                 }
 
+                if !isFriday && !assignments.isEmpty {
+                    DailyTaskList(assignments: assignments)
+                }
                 if isFriday { FridayNotesView() }
 
                 HStack(alignment: .top, spacing: 12) {
@@ -842,22 +846,12 @@ struct DailyAssignmentCard: View {
     @EnvironmentObject private var store: GradeStore
     let assignment: DailyAssignment
     let subject: CourseSubject
-    @State private var visibleTaskIDs: [String] = []
 
     private var done: Int { store.completedCount(for: subject) }
     private var expected: Int { store.expectedTaskCount(for: subject) }
     private var fraction: Double { subject.tasks.isEmpty ? 0 : Double(done) / Double(subject.tasks.count) }
     private var target: Double { subject.tasks.isEmpty ? 0 : Double(expected) / Double(subject.tasks.count) }
     private var standing: ProgressStanding { store.standing(done: done, expected: expected, subject: subject) }
-    private var visibleTasks: [CourseTask] {
-        visibleTaskIDs.compactMap { id in subject.tasks.first(where: { $0.id == id }) }
-    }
-    private var taskLimit: Int? { assignment.period.hasPrefix("Pendiente") ? nil : 5 }
-
-    private func loadNextBatch() {
-        guard let taskLimit else { return }
-        visibleTaskIDs = store.nextTasks(for: subject, limit: taskLimit).map(\.id)
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 11) {
@@ -885,34 +879,98 @@ struct DailyAssignmentCard: View {
                 Label("PENDIENTES PARA RECUPERAR", systemImage: "exclamationmark.circle.fill")
                     .font(.caption.bold()).foregroundStyle(.red)
                 ForEach(store.overdueTasks(for: subject)) { TaskRow(task: $0) }
-            } else if let firstPending = visibleTasks.first(where: { !store.isComplete($0) }) {
-                Label("ABRE ESTO PRIMERO", systemImage: "arrow.up.right.square.fill")
-                    .font(.caption.bold()).foregroundStyle(AppStyle.pink)
-                Text(firstPending.title).font(.title3.bold()).foregroundStyle(AppStyle.navy)
-                Text("Siguientes \(visibleTasks.count) tareas. Al completar este grupo aparecerá el siguiente.")
-                    .font(.caption).foregroundStyle(AppStyle.slate)
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(visibleTasks) { task in TaskRow(task: task) }
-                }
             } else {
-                Label(visibleTasks.isEmpty ? "No quedan tareas pendientes" : "Grupo completado", systemImage: "checkmark.seal.fill")
-                    .font(.subheadline.bold()).foregroundStyle(AppStyle.teal)
-                if !visibleTasks.isEmpty {
-                    ForEach(visibleTasks) { task in TaskRow(task: task) }
-                }
+                Label("Asignatura programada para hoy", systemImage: "books.vertical")
+                    .font(.caption).foregroundStyle(AppStyle.slate)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .background(.white, in: RoundedRectangle(cornerRadius: 5))
         .overlay(RoundedRectangle(cornerRadius: 5).stroke(AppStyle.navy, lineWidth: 1.5))
+    }
+}
+
+struct DailyTaskList: View {
+    @EnvironmentObject private var store: GradeStore
+    let assignments: [DailyAssignment]
+    @State private var visibleTaskIDs: [String] = []
+
+    private var taskBuckets: [[PlannedTask]] {
+        assignments.compactMap { assignment in
+            guard let subject = store.course.subjects.first(where: { $0.code == assignment.subjectCode }) else { return nil }
+            return store.nextTasks(for: subject, limit: subject.tasks.count).map { PlannedTask(subject: subject, task: $0) }
+        }
+    }
+
+    private var nextBatch: [PlannedTask] {
+        let buckets = taskBuckets
+        var result: [PlannedTask] = []
+        var index = 0
+        while buckets.contains(where: { index < $0.count }) {
+            for bucket in buckets where index < bucket.count { result.append(bucket[index]) }
+            index += 1
+        }
+        return result
+    }
+
+    private var allDayTasks: [PlannedTask] {
+        assignments.flatMap { assignment in
+            guard let subject = store.course.subjects.first(where: { $0.code == assignment.subjectCode }) else { return [] }
+            return subject.tasks.map { PlannedTask(subject: subject, task: $0) }
+        }
+    }
+
+    private var visibleTasks: [PlannedTask] {
+        let tasksByID = Dictionary(uniqueKeysWithValues: allDayTasks.map { ($0.id, $0) })
+        return visibleTaskIDs.compactMap { tasksByID[$0] }
+    }
+
+    private var firstPending: PlannedTask? { visibleTasks.first { !store.isComplete($0.task) } }
+
+    private func loadNextBatch() {
+        visibleTaskIDs = Array(nextBatch.prefix(5)).map(\.id)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("TAREAS DE HOY").font(.caption.bold()).tracking(0.5).foregroundStyle(AppStyle.slate)
+            if let firstPending {
+                Label("ABRE ESTO PRIMERO · \(firstPending.subject.abbr)", systemImage: "arrow.up.right.square.fill")
+                    .font(.caption.bold()).foregroundStyle(AppStyle.pink)
+                Text(firstPending.task.title).font(.title3.bold()).foregroundStyle(AppStyle.navy)
+                Text("Hasta cinco tareas. Al completar el grupo aparecerán las siguientes.")
+                    .font(.caption).foregroundStyle(AppStyle.slate)
+            } else if visibleTasks.isEmpty {
+                Text("No quedan tareas pendientes para las asignaturas de hoy.")
+                    .font(.subheadline).foregroundStyle(AppStyle.teal)
+            } else {
+                Label("Has completado todas las tareas pendientes de hoy", systemImage: "checkmark.seal.fill")
+                    .font(.subheadline.bold()).foregroundStyle(AppStyle.teal)
+            }
+
+            ForEach(visibleTasks) { planned in
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(planned.subject.abbr.uppercased()).font(.caption2.bold()).foregroundStyle(AppStyle.slate)
+                    TaskRow(task: planned.task)
+                }
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.white, in: RoundedRectangle(cornerRadius: 5))
+        .overlay(RoundedRectangle(cornerRadius: 5).stroke(AppStyle.navy, lineWidth: 1.5))
         .onAppear { if visibleTaskIDs.isEmpty { loadNextBatch() } }
-        .onChange(of: store.completed) { _ in
-            guard taskLimit != nil, !visibleTaskIDs.isEmpty,
-                  visibleTaskIDs.allSatisfy({ store.completed.contains($0) }) else { return }
-            let previousIDs = visibleTaskIDs
+        .onChange(of: assignments.map(\.subjectCode)) { _ in
+            visibleTaskIDs = []
             loadNextBatch()
-            if visibleTaskIDs.isEmpty { visibleTaskIDs = previousIDs }
+        }
+        .onChange(of: store.completed) { _ in
+            guard !visibleTaskIDs.isEmpty,
+                  visibleTaskIDs.allSatisfy({ id in allDayTasks.first(where: { $0.id == id }).map { store.isComplete($0.task) } ?? false }) else { return }
+            let finishedBatch = visibleTaskIDs
+            loadNextBatch()
+            if visibleTaskIDs.isEmpty { visibleTaskIDs = finishedBatch }
         }
     }
 }
