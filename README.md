@@ -15,9 +15,22 @@ No hace falta publicar la app ni instalarla desde el App Store para ejecutarla d
 
 El proyecto también admite iOS 17 o posterior. Conecta el iPhone al Mac, selecciónalo como destino en Xcode y configura la firma de la app en **Signing & Capabilities** con una cuenta Apple. Para ejecutar en un dispositivo físico, Xcode puede pedir que el iPhone esté desbloqueado y que autorices el Mac.
 
-## Mi día: progreso, referencia y racha
+## Mi día: seguir el plan y ver tu progreso
 
-La pantalla **Mi día** muestra el progreso general del grado y el de cada asignatura. La barra compara dos cantidades:
+**Mi día** usa el día de la semana del Mac o iPhone y muestra únicamente las dos asignaturas programadas para ese día:
+
+| Día | Primera hora | Segunda hora |
+| --- | --- | --- |
+| Lunes | Sistemas eléctricos, neumáticos e hidráulicos | Itinerario Personal para la Empleabilidad I |
+| Martes | Sistemas secuenciales programables | Ampliación de Itinerario Personal para la Empleabilidad |
+| Miércoles | Sistemas de medida y regulación | Documentación técnica |
+| Jueves | Sistemas de potencia | Informática industrial |
+
+En cada asignatura aparece **la siguiente tarea obligatoria pendiente**, en el orden de la temporalización. Abre ese recurso en UNIVERSAE. Al terminar, pulsa **Marcar como hecha y mostrar la siguiente**: el checklist y el progreso se actualizan y la pantalla te propone la próxima tarea de esa asignatura. Cuando ya no queden tareas obligatorias, mostrará el material opcional que falte.
+
+El viernes se reserva para pendientes y apuntes; **Mi día** enseña los dos pendientes más antiguos que queden hasta la semana actual. El sábado y el domingo aparecen como días libres.
+
+Debajo del plan diario se mantiene un resumen del progreso total y de la racha. La barra de progreso compara dos cantidades:
 
 - **Progreso real**: tareas que has marcado como completadas.
 - **Marca vertical**: tareas que la temporalización del curso ya preveía terminar.
