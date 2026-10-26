@@ -1470,3 +1470,8 @@ struct ProgressBackup: FileDocument {
         FileWrapper(regularFileWithContents: data)
     }
 }
+
+#Preview("Mi grado") {
+    RootView()
+        .environmentObject(GradeStore())
+}
