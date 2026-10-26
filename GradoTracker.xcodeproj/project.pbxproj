@@ -8,12 +8,14 @@
 /* Begin PBXBuildFile section */
 		A10000000000000000000001 /* GradoTrackerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* GradoTrackerApp.swift */; };
 		A10000000000000000000002 /* course.json in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* course.json */; };
+		A10000000000000000000003 /* MiGrado.html in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* MiGrado.html */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		A20000000000000000000001 /* GradoTrackerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradoTrackerApp.swift; sourceTree = "<group>"; };
 		A20000000000000000000002 /* course.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = course.json; sourceTree = "<group>"; };
 		A20000000000000000000003 /* MiGrado.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MiGrado.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000004 /* MiGrado.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = MiGrado.html; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -24,7 +26,7 @@
 		A40000000000000000000001 = {isa = PBXGroup; children = (A40000000000000000000002 /* GradoTracker */, A40000000000000000000003 /* Products */, ); sourceTree = "<group>"; };
 		A40000000000000000000002 /* GradoTracker */ = {isa = PBXGroup; path = GradoTracker; sourceTree = "<group>"; children = (A20000000000000000000001 /* GradoTrackerApp.swift */, A40000000000000000000004 /* Resources */, ); };
 		A40000000000000000000003 /* Products */ = {isa = PBXGroup; name = Products; sourceTree = "<group>"; children = (A20000000000000000000003 /* MiGrado.app */, ); };
-		A40000000000000000000004 /* Resources */ = {isa = PBXGroup; path = Resources; sourceTree = "<group>"; children = (A20000000000000000000002 /* course.json */, ); };
+		A40000000000000000000004 /* Resources */ = {isa = PBXGroup; path = Resources; sourceTree = "<group>"; children = (A20000000000000000000002 /* course.json */, A20000000000000000000004 /* MiGrado.html */, ); };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -36,7 +38,7 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		A30000000000000000000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000002 /* course.json in Resources */, ); runOnlyForDeploymentPostprocessing = 0; };
+		A30000000000000000000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000002 /* course.json in Resources */, A10000000000000000000003 /* MiGrado.html in Resources */, ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
