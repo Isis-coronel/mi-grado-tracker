@@ -860,8 +860,8 @@ struct DailyAssignmentCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 11) {
-            HStack(alignment: .top) {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center, spacing: 8) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(assignment.period.uppercased())
                         .font(.caption.bold()).tracking(0.5).foregroundStyle(AppStyle.slate)
@@ -870,16 +870,24 @@ struct DailyAssignmentCard: View {
                 }
                 Spacer(minLength: 8)
                 Text(standing.title.uppercased())
-                    .font(.caption2.bold()).foregroundStyle(standing.title == "Atrasada" ? AppStyle.navy : standing.color)
-                    .padding(.horizontal, 8).padding(.vertical, 5)
-                    .background(standing.color.opacity(0.18), in: RoundedRectangle(cornerRadius: 3))
+                    .font(.caption.bold()).foregroundStyle(.black)
+                    .padding(.horizontal, 7).padding(.vertical, 4)
+                    .background(standing.color)
+                    .overlay(Rectangle().stroke(.black, lineWidth: 2))
             }
+            .padding(8)
+            .overlay(alignment: .bottom) { Rectangle().fill(.black).frame(height: 3) }
 
-            ProgressComparisonBar(actual: fraction, expected: target, color: standing.color)
-            Text("\(done) de \(subject.tasks.count) hechas · \(expected) previstas hasta la semana \(store.referenceWeek)")
-                .font(.caption).foregroundStyle(AppStyle.slate)
-
-            Divider()
+            ReferenceProgressBar(actual: fraction, expected: target, color: standing.color)
+                .padding(.horizontal, 8).padding(.top, 4)
+            HStack {
+                Text("\(done) de \(subject.tasks.count) hechas · \(fraction.formatted(.percent.precision(.fractionLength(0))))")
+                Spacer()
+                Text("meta de hoy: \(expected)")
+            }
+            .font(.caption).foregroundStyle(AppStyle.slate)
+            .padding(.horizontal, 8).padding(.vertical, 4)
+            .overlay(alignment: .bottom) { Rectangle().fill(.black).frame(height: 2) }
 
             if let firstPendingTask {
                 VStack(alignment: .leading, spacing: 6) {
@@ -887,33 +895,37 @@ struct DailyAssignmentCard: View {
                         .font(.caption.bold()).foregroundStyle(.black)
                     Text(firstPendingTask.title)
                         .font(.title3.bold()).foregroundStyle(AppStyle.navy)
-                    Text(firstPendingTask.typeName + " · Unidad \(firstPendingTask.unit) · \(firstPendingTask.minutes) min")
+                    Text("\(firstPendingTask.typeName) · Unidad \(firstPendingTask.unit) · \(firstPendingTask.minutes) min · S\(firstPendingTask.week) · \(deadline(for: firstPendingTask))")
                         .font(.caption).foregroundStyle(AppStyle.slate)
                 }
-                .padding(10)
+                .padding(8)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(AppStyle.yellow)
+                .overlay(Rectangle().stroke(.black, lineWidth: 2))
                 Text("Y sigues por aquí mientras te dure la hora")
                     .font(.caption).foregroundStyle(AppStyle.slate)
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .overlay(alignment: .bottom) { Rectangle().fill(AppStyle.slate.opacity(0.35)).frame(height: 1) }
                 ForEach(visibleTasks) { task in
-                    TaskRow(task: task)
+                    TaskRow(task: task, referenceStyle: true)
                 }
                 if visibleTaskIDs.count == 5 {
                     Text("Al completar estas cinco, aparecerá el siguiente grupo de esta asignatura.")
-                        .font(.caption).foregroundStyle(AppStyle.slate)
+                        .font(.caption).foregroundStyle(AppStyle.slate).padding(8)
                 }
             } else if visibleTasks.isEmpty {
                 Text(assignment.period.contains("atrasadas") ? "No quedan tareas atrasadas." : "No quedan tareas pendientes para esta asignatura.")
-                    .font(.subheadline).foregroundStyle(AppStyle.teal)
+                    .font(.subheadline).foregroundStyle(AppStyle.teal).padding(8)
             } else {
                 Label("Has completado el grupo. Ya no quedan tareas pendientes.", systemImage: "checkmark.seal.fill")
-                    .font(.subheadline.bold()).foregroundStyle(AppStyle.teal)
+                    .font(.subheadline.bold()).foregroundStyle(AppStyle.teal).padding(8)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(.white, in: RoundedRectangle(cornerRadius: 5))
-        .overlay(RoundedRectangle(cornerRadius: 5).stroke(AppStyle.navy, lineWidth: 1.5))
+        .background(.white)
+        .overlay(Rectangle().stroke(.black, lineWidth: 3))
+        .shadow(color: .black.opacity(0.16), radius: 0, x: 6, y: 6)
         .onAppear { if visibleTaskIDs.isEmpty { loadNextBatch() } }
         .onChange(of: store.completed) { _, _ in
             guard !visibleTaskIDs.isEmpty,
@@ -922,6 +934,36 @@ struct DailyAssignmentCard: View {
             loadNextBatch()
             if visibleTaskIDs.isEmpty { visibleTaskIDs = finishedBatch }
         }
+    }
+
+    private func deadline(for task: CourseTask) -> String {
+        guard let week = store.course.weeks.first(where: { $0.n == task.week }) else { return "—" }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "es_ES")
+        formatter.dateFormat = "d MMM"
+        return formatter.string(from: formatter.date(from: week.e) ?? Date())
+    }
+}
+
+struct ReferenceProgressBar: View {
+    let actual: Double
+    let expected: Double
+    let color: Color
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Rectangle().fill(.white)
+                Rectangle().fill(color).frame(width: geometry.size.width * min(max(actual, 0), 1))
+                Rectangle().fill(AppStyle.navy)
+                    .frame(width: 3, height: geometry.size.height + 4)
+                    .offset(x: max(0, geometry.size.width * min(max(expected, 0), 1) - 1.5))
+            }
+            .overlay(Rectangle().stroke(.black, lineWidth: 2))
+        }
+        .frame(height: 12)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Progreso real \(actual.formatted(.percent.precision(.fractionLength(0)))) frente a meta \(expected.formatted(.percent.precision(.fractionLength(0))))")
     }
 }
 
@@ -1154,6 +1196,7 @@ struct SubjectDetailView: View {
 struct TaskRow: View {
     @EnvironmentObject private var store: GradeStore
     let task: CourseTask
+    var referenceStyle = false
     @State private var showingAssessment = false
     @State private var grade = ""
 
@@ -1163,13 +1206,15 @@ struct TaskRow: View {
                 if task.type == "A" && !store.isComplete(task) { showingAssessment = true }
                 else { store.toggle(task) }
             } label: {
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: store.isComplete(task) ? "checkmark.circle.fill" : "circle")
-                        .foregroundStyle(store.isComplete(task) ? AppStyle.teal : AppStyle.slate)
+                HStack(alignment: .top, spacing: referenceStyle ? 8 : 12) {
+                    Image(systemName: checkboxSymbol)
+                        .foregroundStyle(store.isComplete(task) ? AppStyle.teal : (referenceStyle ? Color.black : AppStyle.slate))
                         .font(.title3)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(task.title).foregroundStyle(store.isComplete(task) ? .secondary : .primary).strikethrough(store.isComplete(task))
-                        Text("\(task.typeName) · Unidad \(task.unit) · Semana \(task.week) · \(task.minutes) min\(task.optional ? " · opcional" : "") · hasta \(deadline)")
+                        Text(referenceStyle
+                             ? "\(task.typeName) · U\(task.unit) · \(task.minutes) min · S\(task.week) · \(deadline)\(task.optional ? " · opcional" : "")"
+                             : "\(task.typeName) · Unidad \(task.unit) · Semana \(task.week) · \(task.minutes) min\(task.optional ? " · opcional" : "") · hasta \(deadline)")
                             .font(.caption).foregroundStyle(isOverdue && !store.isComplete(task) ? Color.red : Color.primary.opacity(0.65))
                     }
                     Spacer(minLength: 0)
@@ -1177,6 +1222,12 @@ struct TaskRow: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .padding(referenceStyle ? 7 : 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(referenceStyle ? Color.white : Color.clear)
+            .overlay(alignment: .bottom) {
+                if referenceStyle { Rectangle().fill(AppStyle.slate.opacity(0.32)).frame(height: 1) }
+            }
             if task.type == "A" {
                 HStack(spacing: 8) {
                     TextField("Nota", text: $grade).frame(maxWidth: 80)
@@ -1204,6 +1255,12 @@ struct TaskRow: View {
         guard let week = store.course.weeks.first(where: { $0.n == task.week }) else { return "—" }
         let formatter = DateFormatter(); formatter.locale = Locale(identifier: "es_ES"); formatter.dateFormat = "d MMM"
         return formatter.string(from: formatter.date(from: week.e) ?? Date())
+    }
+    private var checkboxSymbol: String {
+        if referenceStyle {
+            return store.isComplete(task) ? "checkmark.square.fill" : "square"
+        }
+        return store.isComplete(task) ? "checkmark.circle.fill" : "circle"
     }
     private var isOverdue: Bool {
         guard let week = store.course.weeks.first(where: { $0.n == task.week }) else { return false }
