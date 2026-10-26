@@ -1,23 +1,18 @@
 # Mi grado
 
-Aplicación nativa en SwiftUI para organizar el seguimiento del Grado Superior en Automatización y Robótica Industrial. Tiene destinos para Mac y iPhone.
+Aplicación nativa en SwiftUI para macOS e iOS que ayuda a seguir el Grado Superior en Automatización y Robótica Industrial. La temporalización del curso se incluye como datos de referencia; el progreso personal se guarda en el dispositivo.
 
-## Probar en un Mac
+## Ejecutarla en Xcode
 
-1. Instala Xcode y macOS 14 o posterior.
-2. Abre `GradoTracker.xcodeproj`.
-3. En la barra superior, selecciona el esquema `MiGrado` y el destino `My Mac`.
-4. Pulsa **Run** (▶).
+1. Instala Xcode y abre `GradoTracker.xcodeproj`.
+2. Selecciona el esquema `MiGrado` y el destino **My Mac**.
+3. Pulsa **Run** (▶). Se requiere macOS 14 o posterior.
 
-No hace falta publicar la app ni instalarla desde el App Store para ejecutarla desde Xcode en un Mac.
+Para probarla en iPhone, conecta y selecciona el dispositivo en Xcode, y configura la firma en **Signing & Capabilities**. Se requiere iOS 17 o posterior.
 
-## Probar en iPhone
+## Mi día: qué abrir a continuación
 
-El proyecto también admite iOS 17 o posterior. Conecta el iPhone al Mac, selecciónalo como destino en Xcode y configura la firma de la app en **Signing & Capabilities** con una cuenta Apple. Para ejecutar en un dispositivo físico, Xcode puede pedir que el iPhone esté desbloqueado y que autorices el Mac.
-
-## Mi día: seguir el plan y ver tu progreso
-
-**Mi día** usa el día de la semana del Mac o iPhone y muestra únicamente las dos asignaturas programadas para ese día:
+La tira semanal deja elegir un día y cambiar de semana. **Volver a hoy** restaura la fecha actual. El plan habitual tiene dos asignaturas de lunes a jueves:
 
 | Día | Primera hora | Segunda hora |
 | --- | --- | --- |
@@ -26,35 +21,34 @@ El proyecto también admite iOS 17 o posterior. Conecta el iPhone al Mac, selecc
 | Miércoles | Sistemas de medida y regulación | Documentación técnica |
 | Jueves | Sistemas de potencia | Informática industrial |
 
-En cada asignatura aparece **la siguiente tarea obligatoria pendiente**, en el orden de la temporalización. Abre ese recurso en UNIVERSAE. Al terminar, pulsa **Marcar como hecha y mostrar la siguiente**: el checklist y el progreso se actualizan y la pantalla te propone la próxima tarea de esa asignatura. Cuando ya no queden tareas obligatorias, mostrará el material opcional que falte.
+Cada tarjeta propone la siguiente tarea pendiente de la asignatura, en el orden de la temporalización. Abre ese recurso en UNIVERSAE y marca la tarea al terminar; la app muestra la siguiente. El viernes se reserva para pendientes y apuntes. Sábado y domingo son libres, salvo que el plan se haya desplazado al congelar días. El 15 de septiembre está reservado a Inglés y la rotación empieza el 16.
 
-El viernes se reserva para pendientes y apuntes; **Mi día** enseña los dos pendientes más antiguos que queden hasta la semana actual. El sábado y el domingo aparecen como días libres.
+Las tarjetas superiores resumen los días hasta los exámenes presenciales (19 de mayo de 2027), la próxima autoevaluación pendiente y las tareas completadas frente a la meta. La meta se distribuye según la parte transcurrida de la semana activa. En las asignaturas, la barra compara el progreso real con esa meta. El estado puede ser **Por delante**, **Al día**, **N por hacer** (menos de una semana de trabajo de esa asignatura) o **N atrasadas** (una semana o más). Las asignaturas con más retraso aparecen primero.
 
-Debajo del plan diario se mantiene un resumen del progreso total y de la racha. La barra de progreso compara dos cantidades:
+La racha cuenta únicamente los días en que marcas tareas completadas. Los fines de semana y los huecos entre semanas lectivas se omiten; se toleran hasta dos días lectivos seguidos sin completar tareas. Al tercero se rompe la racha. Las acciones de apuntes, clases y autoevaluaciones no cuentan como día de estudio por sí solas. Se permiten dos congeladores por semana lectiva: congelar un día protege la racha y desplaza las clases restantes un día, incluso hasta el sábado.
 
-- **Progreso real**: tareas que has marcado como completadas.
-- **Marca vertical**: tareas que la temporalización del curso ya preveía terminar.
+## Asignaturas y autoevaluaciones
 
-La referencia se calcula con las semanas de las temporalizaciones incluidas en el curso. Durante una semana activa, la meta incluye las tareas de las semanas anteriores; las tareas de la semana actual entran en la meta cuando esa semana termina. Así no se consideran atrasadas antes de acabar la semana. Las semanas de descanso mantienen la última meta alcanzada.
+Abre una asignatura para ver sus unidades, el avance de cada una y las tareas asociadas. El checklist es compartido con **Mi día**. Las filas muestran tipo de recurso, unidad, duración, semana y fecha límite; una tarea pendiente vencida aparece en rojo.
 
-El estado compara tus tareas completadas con esa meta:
+Al marcar una autoevaluación, puedes guardar el número de intento, la nota y la dificultad, o saltar el registro del intento. Debajo de cada autoevaluación están sus intentos anteriores; puedes añadir o quitar el último y ajustar su dificultad. Las marcas de dificultad difícil se resumen en la tarjeta de la asignatura. Una unidad queda lista para apuntes del viernes cuando todas sus tareas están completadas y tiene al menos un intento registrado de autoevaluación.
 
-- **Por delante**: has completado más tareas de las previstas hasta ahora.
-- **Al día**: has completado exactamente las tareas previstas.
-- **Atrasada**: te faltan tareas para alcanzar la referencia. La etiqueta también indica cuántas.
+## Calendario
 
-Las barras muestran tu avance real con un color y la marca vertical señala la meta temporal. En la pantalla **Asignaturas**, toca el nombre de una asignatura para desplegar sus unidades y checklist. Toca una tarea para marcarla o desmarcarla; al hacerlo se actualizan la barra, el estado y el total del grado.
+Muestra las 34 semanas, sus fechas, tareas y autoevaluaciones, y el avance completado. La semana actual está resaltada; las semanas con cuatro o más autoevaluaciones llevan un aviso. Los huecos entre rangos lectivos se consideran pausas para el cálculo de la racha.
 
-La **racha de estudio** cuenta los días consecutivos en los que marcas al menos una tarea. Si hoy todavía no has marcado ninguna, se conserva la racha de ayer; se interrumpe al pasar un día completo sin actividad. La app registra la actividad desde esta versión. Las marcas anteriores se conservan, pero la versión previa no guardaba fechas de actividad, así que no se inventa una racha pasada.
+## Plan
 
-## Otras pantallas
+Incluye la rotación semanal, el significado de los estados, cifras orientativas del curso (203 horas de material, 10 horas semanales y aproximadamente 320 horas hasta el examen) y opciones para exportar, importar o reiniciar el progreso. El cálculo de 115 horas de margen es una estimación fija; estas cifras no se recalculan al cambiar el ritmo.
 
-- **Calendario**: consulta las 34 semanas del curso, su rango de fechas, el número de tareas y las autoevaluaciones.
-- **Plan**: muestra la rotación semanal recomendada de asignaturas y permite exportar o importar una copia del progreso.
-- El checklist conserva la asignatura, unidad, semana y duración estimada de cada tarea.
+## Clases en directo e historial
 
-## Datos y copia de seguridad
+En **Directos**, registra asignatura, fecha, temas y notas opcionales. Las clases aparecen agrupadas por asignatura, de más reciente a más antigua, y se pueden borrar.
 
-El progreso y los días de actividad se guardan localmente en cada dispositivo. La app no los envía a ningún servidor y no sincroniza automáticamente Mac y iPhone. En **Plan → Copia de progreso**, exporta el archivo JSON en un dispositivo e impórtalo en el otro. El archivo incluye las tareas completadas y el historial de días de la racha. También se pueden importar copias antiguas que solo contienen las tareas completadas; en ellas no hay fechas con las que reconstruir una racha previa.
+**Historial** es la caja negra de solo lectura: guarda acciones con fecha y hora (marcas y desmarcas, autoevaluaciones, apuntes, clases y congeladores) y permite copiar el registro completo.
 
-El repositorio incluye el código de la app y los datos de temporalización necesarios para calcular la referencia. No incluye el historial personal de tareas ni las copias de progreso.
+## Datos, privacidad y copias
+
+Los datos personales del tracker se guardan localmente en cada dispositivo y no se envían a un servidor. Mac e iPhone no se sincronizan automáticamente. En **Plan → Copia de progreso**, exporta un JSON en un dispositivo y luego impórtalo en el otro. La copia incluye tareas, intentos, apuntes, clases, historial, días de racha y congeladores. **Reiniciar progreso** borra esos datos locales.
+
+El repositorio contiene el código y los datos de temporalización necesarios para usar la app. No contiene el historial personal ni las copias de progreso.
