@@ -1,0 +1,6 @@
+# Xcode user-specific state and build output
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.moved-aside
