@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mi grado · Automatización y Robótica Industrial</title>
+<style>html,body{margin:0;padding:0;background:#EFF2F5;}</style>
+</head><body>
+<div id="app"></div>
+<script>
+/* ============ DATOS ============ */
+const WEEKS=[
+{n:1,s:'2026-09-10',e:'2026-09-11',l:'10 – 11 sep'},
+{n:2,s:'2026-09-14',e:'2026-09-18',l:'14 – 18 sep'},
+{n:3,s:'2026-09-21',e:'2026-09-25',l:'21 – 25 sep'},
+{n:4,s:'2026-09-28',e:'2026-10-02',l:'28 sep – 2 oct'},
+{n:5,s:'2026-10-05',e:'2026-10-09',l:'5 – 9 oct'},
+{n:6,s:'2026-10-13',e:'2026-10-16',l:'13 – 16 oct'},
+{n:7,s:'2026-10-19',e:'2026-10-23',l:'19 – 23 oct'},
+{n:8,s:'2026-10-26',e:'2026-10-30',l:'26 – 30 oct'},
+{n:9,s:'2026-11-02',e:'2026-11-06',l:'2 – 6 nov'},
+{n:10,s:'2026-11-09',e:'2026-11-13',l:'9 – 13 nov'},
+{n:11,s:'2026-11-16',e:'2026-11-20',l:'16 – 20 nov'},
+{n:12,s:'2026-11-23',e:'2026-11-27',l:'23 – 27 nov'},
+{n:13,s:'2026-11-30',e:'2026-12-04',l:'30 nov – 4 dic'},
+{n:14,s:'2026-12-09',e:'2026-12-11',l:'9 – 11 dic'},
+{n:15,s:'2026-12-14',e:'2026-12-18',l:'14 – 18 dic'},
+{n:16,s:'2026-12-21',e:'2026-12-22',l:'21 – 22 dic'},
+{n:17,s:'2027-01-07',e:'2027-01-08',l:'7 – 8 ene'},
+{n:18,s:'2027-01-11',e:'2027-01-15',l:'11 – 15 ene'},
+{n:19,s:'2027-01-18',e:'2027-01-22',l:'18 – 22 ene'},
+{n:20,s:'2027-01-25',e:'2027-01-29',l:'25 – 29 ene'},
+{n:21,s:'2027-02-01',e:'2027-02-05',l:'1 – 5 feb'},
+{n:22,s:'2027-02-08',e:'2027-02-12',l:'8 – 12 feb'},
+{n:23,s:'2027-02-15',e:'2027-02-19',l:'15 – 19 feb'},
+{n:24,s:'2027-02-22',e:'2027-02-26',l:'22 – 26 feb'},
+{n:25,s:'2027-03-01',e:'2027-03-05',l:'1 – 5 mar'},
+{n:26,s:'2027-03-08',e:'2027-03-12',l:'8 – 12 mar'},
+{n:27,s:'2027-03-15',e:'2027-03-18',l:'15 – 18 mar'},
+{n:28,s:'2027-04-05',e:'2027-04-09',l:'5 – 9 abr'},
+{n:29,s:'2027-04-12',e:'2027-04-16',l:'12 – 16 abr'},
+{n:30,s:'2027-04-19',e:'2027-04-23',l:'19 – 23 abr'},
+{n:31,s:'2027-04-28',e:'2027-05-05',l:'28 abr – 5 may',sp:'Pruebas de repaso'},
+{n:32,s:'2027-05-06',e:'2027-05-07',l:'6 – 7 may',sp:'Semana de repaso'},
+{n:33,s:'2027-05-10',e:'2027-05-14',l:'10 – 14 may',sp:'Semana de repaso'},
+{n:34,s:'2027-05-19',e:'2027-05-22',l:'19 – 22 may',sp:'Exámenes finales presenciales'}];
+
+const GAPS=[
+{after:6,txt:'12 oct · Fiesta Nacional'},
+{after:13,txt:'7 – 8 dic · Puente de la Constitución'},
+{after:16,txt:'23 dic – 6 ene · Navidad — 2 semanas de colchón'},
+{after:27,txt:'19 mar – 4 abr · Fallas y Semana Santa — 2,5 semanas de colchón'},
+{after:30,txt:'24 – 27 abr'}];
+
+const MIN={T:50,VC:25,VE:15,CI:20,IN:10,E360:15,AR:10,SIM:15,LAB:20,S:20,A:25,EJ:25,D:20,VOC:15};
+const TNAME={T:'Temario',VC:'Vídeo clase',VE:'Vídeo explicativo',CI:'Clase interactiva',IN:'Infografía',E360:'Entorno 360',AR:'Realidad aumentada',SIM:'Simulador',LAB:'Laboratorio',S:'Síntesis',A:'Autoevaluación',EJ:'Ejercicios',D:'Destrezas',VOC:'Vocabulario'};
+const OPT={IN:1,E360:1,AR:1,SIM:1};
+
+const SUBJECTS=[
+{c:'ELAR01',n:'Sistemas eléctricos, neumáticos e hidráulicos',ab:'Eléctricos',w:'alta',
+ u:{1:['Introducción a los sistemas electromecánicos, neumáticos e hidráulicos',['Introducción a la automatización','Lógica cableada y lógica programada','Tipos de automatización cableada']],
+ 2:['Reconocimiento de dispositivos electromecánicos, neumáticos e hidráulicos',['Aplicaciones automáticas con sistemas secuenciales','Distribución en los dispositivos','Técnicas de conexión eléctrica, neumática e hidráulica','Dispositivos de control eléctrico cableado','Dispositivos de control neumáticos','Dispositivos de control hidráulicos']],
+ 3:['Dibujo de croquis y esquemas de sistemas de control',['Simbología normalizada','Alimentación eléctrica de circuitos de control','Esquemas de automatismos eléctricos','Esquemas de automatismos neumáticos e hidráulicos','Secuencias y diagramas funcionales','Diseño de circuitos por métodos sistemáticos']],
+ 4:['Procedimiento para el arranque de motores',['Prevención de riesgos laborales','Conexiones en el motor asíncrono trifásico','Procedimientos de arranque de motores trifásicos','Inversión del sentido de giro']],
+ 5:['Elementos de protección y medida',['Diagrama de bloques','Relés de protección: características','Relés de tensión','Puesta a tierra de las máquinas','Aparatos de medida','Aplicación del REBT']],
+ 6:['Circuitos combinacionales',['Decodificadores','Codificadores','Multiplexores','Demultiplexores','Comparadores binarios','Circuito semisumador']],
+ 7:['Sistemas de numeración y códigos',['Decimal','Octal','Hexadecimal','Binario','BCD','Otros códigos binarios','Códigos alfanuméricos']],
+ 8:['Autómatas programables',['Definición de autómata programable','Clasificación según tamaño','Otros elementos del sistema','Sistemas programados: programación básica','Representación de entradas y salidas','Contactos de apertura y cierre','Instrucciones básicas STEP 7 en KOP','Programación en FUP']],
+ 9:['Programación de esquemas cableados',['Programas KOP desde el esquema de cableado','Temporizadores','Contadores','Uso de marcas']],
+ 10:['Programación con OMRON',['Serie CxxH','Serie CPM2A','Serie CQM1','Direccionamiento de E/S','Cable RS232','Ejemplos de programación','Control de flancos']],
+ 11:['Ejemplos de programas',['Cableado S7-200','Cableado S7-300','Relés interfaces','Cintas transportadoras','Control de tolva','Control de velocidad de bombas de agua']],
+ 12:['Elementos de neumática',['Aire comprimido: principios fundamentales','Producción de aire comprimido','Distribución del aire comprimido','Cilindros neumáticos','Válvulas','Válvulas distribuidoras']],
+ 13:['Hidráulica aplicada',['Principios físicos fundamentales','Magnitudes físicas','Fluidos hidráulicos','Tipos de bombas hidráulicas','Instalaciones hidráulicas','Válvulas','Elementos hidráulicos de trabajo']]},
+ s:[[2,1,[['T','Temario Unidad 1'],['VC','Vídeo clase U1: Introducción a los sistemas electromecánicos']]],
+ [3,1,[['CI','Introducción a los sistemas automatizados']]],
+ [4,1,[['VE','Introducción a los sistemas electroneumáticos, neumáticos e hidráulicos']]],
+ [5,1,[['E360','Elementos eléctricos, neumáticos e hidráulicos'],['IN','Accionamientos de los dispositivos']]],
+ [6,1,[['S','Síntesis U1'],['A','Autoevaluación U1']]],
+ [7,2,[['T','Temario Unidad 2'],['VC','Vídeo clase U2: Reconocimiento de dispositivos']]],
+ [8,2,[['S','Síntesis U2'],['A','Autoevaluación U2']]],
+ [9,3,[['T','Temario Unidad 3'],['VC','Vídeo clase U3: Dibujo de croquis y esquemas']]],
+ [10,3,[['CI','Tipos de corriente'],['AR','Cilindro hidráulico de doble efecto']]],
+ [11,3,[['S','Síntesis U3'],['A','Autoevaluación U3']]],
+ [12,4,[['T','Temario Unidad 4'],['VC','Vídeo clase U4: Arranque de motores']]],
+ [13,4,[['CI','Conexiones de motor asíncrono trifásico']]],
+ [14,4,[['S','Síntesis U4'],['A','Autoevaluación U4']]],
+ [15,5,[['T','Temario Unidad 5'],['VC','Vídeo clase U5: Elementos de protección y medida'],['IN','Relé de protección']]],
+ [16,5,[['VE','Determinación de las protecciones de una instalación'],['S','Síntesis U5'],['A','Autoevaluación U5']]],
+ [17,6,[['T','Temario Unidad 6'],['VC','Vídeo clase U6: Circuitos combinacionales'],['S','Síntesis U6'],['A','Autoevaluación U6']]],
+ [18,7,[['T','Temario Unidad 7'],['VC','Vídeo clase U7: Sistemas de numeración y códigos'],['CI','Sistemas de numeración']]],
+ [19,7,[['VE','Códigos decimales y binarios con tabla de verdad']]],
+ [20,7,[['S','Síntesis U7'],['A','Autoevaluación U7']]],
+ [21,8,[['T','Temario Unidad 8'],['CI','Definición de autómata']]],
+ [22,8,[['VE','Modelos de síntesis de autómatas programables'],['VC','Vídeo clase U8: Autómatas programables'],['S','Síntesis U8'],['A','Autoevaluación U8']]],
+ [23,9,[['T','Temario Unidad 9'],['VC','Vídeo clase U9: Programación de esquemas cableados'],['S','Síntesis U9'],['A','Autoevaluación U9']]],
+ [24,10,[['T','Temario Unidad 10'],['VC','Vídeo clase U10: Programación con OMRON']]],
+ [25,10,[['VE','Direccionamiento de entradas y salidas de autómatas OMRON']]],
+ [26,10,[['S','Síntesis U10'],['A','Autoevaluación U10']]],
+ [27,11,[['T','Temario Unidad 11'],['VC','Vídeo clase U11: Ejemplos de programas'],['S','Síntesis U11'],['A','Autoevaluación U11']]],
+ [28,12,[['T','Temario Unidad 12'],['VC','Vídeo clase U12: Elementos de neumática'],['VE','Eficiencia de los sistemas neumáticos']]],
+ [29,12,[['S','Síntesis U12'],['A','Autoevaluación U12']]],
+ [30,13,[['T','Temario Unidad 13'],['VC','Vídeo clase U13: Hidráulica aplicada'],['S','Síntesis U13'],['A','Autoevaluación U13']]]]},
+
+{c:'ELAR02',n:'Sistemas secuenciales programables',ab:'Secuenciales',w:'alta',
+ u:{1:['Lógica digital',['Tipos de señales','Sistemas y códigos de numeración','Lógica digital','Circuito, función matemática y tabla de verdad','Mapas de Karnaugh','Circuitos lógicos secuenciales']],
+ 2:['Autómatas programables industriales',['Sistemas automatizados','El autómata programable industrial','Clasificación de los autómatas','Estructura del autómata','Señales analógicas','Programación de los autómatas']],
+ 3:['Programación de relés programables en FBD',['Lenguaje FBD para LOGO','Programación básica','Temporizadores','Contador/descontador','Detección de flancos','Marcas internas']],
+ 4:['Programación en STEP 7 (I)',['Introducción','Tipos de datos en STEP 7','Direccionamiento de E/S','Programación estructurada','Ciclo de SCAN','Variables en STEP 7','Lenguaje de contactos']],
+ 5:['Programación en STEP 7 (II)',['Temporizadores','Contadores','Operaciones de comparación','Marca de ciclo (clock memory)','OB de arranque (OB100)']],
+ 6:['GRAFCET',['Introducción al GRAFCET','Necesidad de un gráfico secuencial','Partes del GRAFCET','Sintaxis','Tipos de GRAFCET','Modos de funcionamiento','Estructura']],
+ 7:['GRAFCET en lenguaje de contactos (KOP)',['Administración del GRAFCET','Zona secuencial','Zona de inicialización','Zona de acciones','Zona no secuencial']],
+ 8:['Modos de funcionamiento y estructuración en GRAFCET',['Programación de modos de funcionamiento','Programación de GRAFCET estructurado']],
+ 9:['Tratamiento de datos y señales analógicas en STEP 7',['Tipos de datos en STEP 7','Tipos de datos simples','Notación de números','Operación de transferencia (MOVE)','Operaciones matemáticas básicas','Tratamiento de señales analógicas']]},
+ s:[[2,1,[['T','Temario Unidad 1'],['VC','Vídeo clase U1: Lógica digital']]],
+ [3,1,[['CI','Circuitos integrados con puertas lógicas']]],
+ [4,1,[['AR','Elementos de un autómata programable']]],
+ [5,1,[['S','Síntesis U1'],['A','Autoevaluación U1']]],
+ [6,2,[['T','Temario Unidad 2'],['VC','Vídeo clase U2: Autómatas programables industriales']]],
+ [7,2,[['IN','Clasificación de los autómatas programables']]],
+ [8,2,[['E360','Automatización de ascensor']]],
+ [9,2,[['VE','El autómata programable lógico']]],
+ [10,2,[['S','Síntesis U2'],['A','Autoevaluación U2']]],
+ [11,3,[['T','Temario Unidad 3'],['VC','Vídeo clase U3: Relés programables en FBD'],['CI','Tipos de temporizadores']]],
+ [12,3,[['VE','Programación de relés programables']]],
+ [13,3,[['VE','Lenguajes de programación de autómatas'],['S','Síntesis U3'],['A','Autoevaluación U3']]],
+ [14,4,[['T','Temario Unidad 4'],['VC','Vídeo clase U4: STEP 7 (I)']]],
+ [15,4,[['CI','Direccionamiento de E/S en PLC y programación estructurada']]],
+ [16,4,[['S','Síntesis U4'],['A','Autoevaluación U4']]],
+ [17,5,[['T','Temario Unidad 5'],['VC','Vídeo clase U5: STEP 7 (II)']]],
+ [18,5,[['S','Síntesis U5'],['A','Autoevaluación U5']]],
+ [19,6,[['T','Temario Unidad 6'],['VC','Vídeo clase U6: GRAFCET']]],
+ [20,6,[['CI','Partes del GRAFCET']]],
+ [21,6,[['VE','Ejemplo usando GRAFCET']]],
+ [22,6,[['S','Síntesis U6'],['A','Autoevaluación U6']]],
+ [23,7,[['T','Temario Unidad 7'],['VC','Vídeo clase U7: GRAFCET en KOP'],['VE','Ejemplo de GRAFCET en lenguaje de contactos']]],
+ [24,7,[['VE','Ejemplo Tia Portal'],['S','Síntesis U7'],['A','Autoevaluación U7']]],
+ [25,8,[['T','Temario Unidad 8'],['VC','Vídeo clase U8: Modos de funcionamiento en GRAFCET']]],
+ [26,8,[['IN','Estructura del autómata programable']]],
+ [27,8,[['S','Síntesis U8'],['A','Autoevaluación U8']]],
+ [28,9,[['T','Temario Unidad 9'],['VC','Vídeo clase U9: Datos y señales analógicas en STEP 7']]],
+ [29,9,[['CI','Tratamiento de señales analógicas']]],
+ [30,9,[['S','Síntesis U9'],['A','Autoevaluación U9']]]]},
+
+{c:'ELAR03',n:'Sistemas de medida y regulación',ab:'Medida y regulación',w:'alta',
+ u:{1:['Introducción a la regulación y control automáticos',['Introducción y breve historia','Fundamentos básicos','Clasificación de los sistemas de regulación','Entradas, salidas y perturbaciones','Modelos de los sistemas de control','La transformada de Laplace','Aplicaciones industriales']],
+ 2:['Reconocimiento de los dispositivos de medida y regulación',['Elementos de los procesos de regulación','Disposición física y bucle de control','Instrumentación de control industrial','Señales de un sistema de medida','Especificaciones de los sistemas de control']],
+ 3:['Actuadores y preactuadores industriales',['Motores eléctricos','Válvulas de proceso','Resistencias eléctricas y relés de estado sólido','Neumática e hidráulica proporcional']],
+ 4:['Tratamiento de datos: regulación automática',['Realimentación','Clasificación e identificación de sistemas','Diagrama de Bode','Estabilidad absoluta y relativa','Error en régimen permanente','Control P, PI, PID']],
+ 5:['Montaje y desarrollo de sistemas de medida y regulación',['Selección y dimensionado de componentes','Selección de controladores','Montaje y puesta en marcha','Control analógico y digital','Discretización de controladores','Control avanzado']],
+ 6:['Puesta en servicio de los sistemas de medida y regulación',['Verificación de sistemas','Medida y comprobación eléctrica','Calibración de sensores y transductores','Plan de actuación','Instalación en planta','Ajuste práctico de PID']],
+ 7:['Diagnóstico de averías',['Técnicas de mantenimiento e informe de incidencias','Diagnóstico y localización de averías','Protocolos de pruebas','Averías típicas en sistemas automatizados','Equipos y aparatos de medida']],
+ 8:['Prevención de riesgos, seguridad y protección medioambiental',['Normativa de PRL en sistemas automáticos','El riesgo eléctrico','EPI y protección colectiva','Gestión de residuos','Trabajo en instalaciones eléctricas','Protección medioambiental']]},
+ s:[[2,1,[['T','Temario Unidad 1'],['VC','Vídeo clase U1: Introducción a la regulación y control']]],
+ [3,1,[['S','Síntesis U1'],['A','Autoevaluación U1']]],
+ [4,2,[['T','Temario Unidad 2'],['VC','Vídeo clase U2: Dispositivos de medida y regulación']]],
+ [5,2,[['VE','Introducción al SI y las medidas de presión']]],
+ [6,2,[['S','Síntesis U2'],['A','Autoevaluación U2']]],
+ [7,3,[['T','Temario Unidad 3'],['VC','Vídeo clase U3: Actuadores y preactuadores']]],
+ [8,3,[['AR','Motor eléctrico'],['SIM','Montaje de motor eléctrico']]],
+ [9,3,[['E360','Elementos neumáticos'],['VE','Elementos, procesos de regulación y bucle de control']]],
+ [10,3,[['S','Síntesis U3'],['A','Autoevaluación U3']]],
+ [11,4,[['T','Temario Unidad 4'],['VC','Vídeo clase U4: Regulación automática']]],
+ [12,4,[['CI','Estrategias de control clásicas']]],
+ [13,4,[['S','Síntesis U4'],['A','Autoevaluación U4']]],
+ [14,5,[['T','Temario Unidad 5'],['VC','Vídeo clase U5: Montaje y desarrollo']]],
+ [15,5,[['IN','Protección de choques mecánicos IK de envolventes']]],
+ [16,5,[['IN','Protección IP']]],
+ [17,5,[['CI','Parámetros y programación de control analógico y digital']]],
+ [18,5,[['VE','Diagramas P&I']]],
+ [19,5,[['S','Síntesis U5']]],
+ [20,5,[['A','Autoevaluación U5']]],
+ [21,6,[['T','Temario Unidad 6'],['VC','Vídeo clase U6: Puesta en servicio']]],
+ [22,6,[['VE','Ejemplo práctico de sistema de medida y regulación']]],
+ [23,6,[['CI','Verificación del funcionamiento de los sistemas']]],
+ [24,6,[['S','Síntesis U6'],['A','Autoevaluación U6']]],
+ [25,7,[['T','Temario Unidad 7'],['VC','Vídeo clase U7: Diagnóstico de averías']]],
+ [26,7,[['CI','Mantenimiento, diagnóstico y plan de actuación ante averías']]],
+ [27,7,[['VE','Mantenimiento de sistemas de medida y regulación']]],
+ [28,7,[['S','Síntesis U7'],['A','Autoevaluación U7']]],
+ [29,8,[['T','Temario Unidad 8'],['VC','Vídeo clase U8: Prevención de riesgos'],['CI','PRL en montaje y mantenimiento']]],
+ [30,8,[['VE','Seguridad en entornos eléctricos'],['S','Síntesis U8'],['A','Autoevaluación U8']]]]},
+
+{c:'ELAR04',n:'Sistemas de potencia',ab:'Potencia',w:'alta',
+ u:{1:['Parámetros característicos de los sistemas eléctricos en corriente alterna',['Valores fundamentales de la CA','Parámetros de un circuito de CA','Comportamiento de los receptores','Sistemas monofásicos y trifásicos','Conexión de receptores trifásicos','Medidas en circuitos de CA','Cálculo de secciones de conductores','Protecciones eléctricas']],
+ 2:['Reconocimiento del funcionamiento de las máquinas eléctricas',['Electromagnetismo','Clasificación de las máquinas','Máquinas de corriente continua','Máquinas rotativas de CA','Máquina rotativa asíncrona','Máquina rotativa síncrona','Transformador eléctrico']],
+ 3:['Accionamientos eléctricos y electrónicos de potencia',['Aparatos de medida eléctrica','Componentes electrónicos de control de potencia','Arrancador suave electrónico','Variador de velocidad de motores']],
+ 4:['Instalación y conexionado de motores eléctricos',['Especificaciones técnicas de los motores','Elección de motores','Esquemas de conexión','Tipos de arranque']],
+ 5:['Verificación y puesta en marcha del sistema de potencia',['Instalación de máquinas rotativas','Instalación de transformadores','Diagnóstico y localización de averías','Averías típicas en motores','Averías típicas en generadores']],
+ 6:['Mantenimiento de máquinas eléctricas',['Mantenimiento de máquinas eléctricas','Características y tipología de las máquinas','Tiempos de revisión y supervisión','Valoración económica','Tipos de mantenimiento','Procedimientos de actuación','Técnicas de actuación','Mantenimiento mecánico y eléctrico','Normativa legal']],
+ 7:['Prevención de riesgos, seguridad y protección medioambiental',['Normativa de PRL en sistemas automáticos','El riesgo eléctrico','EPI y protección colectiva','Trabajo en instalaciones eléctricas','Protección medioambiental']]},
+ s:[[2,1,[['T','Temario Unidad 1'],['VC','Vídeo clase U1: Parámetros de los sistemas en CA']]],
+ [3,1,[['IN','Sistemas monofásicos y trifásicos']]],
+ [4,1,[['VE','Cálculo de secciones de conductores']]],
+ [5,1,[['S','Síntesis U1'],['A','Autoevaluación U1']]],
+ [6,2,[['T','Temario Unidad 2'],['VC','Vídeo clase U2: Máquinas eléctricas']]],
+ [7,2,[['CI','Máquinas eléctricas']]],
+ [8,2,[['IN','Clasificación de máquinas eléctricas']]],
+ [9,2,[['E360','Elementos neumáticos']]],
+ [10,2,[['S','Síntesis U2'],['A','Autoevaluación U2']]],
+ [11,3,[['T','Temario Unidad 3'],['VC','Vídeo clase U3: Accionamientos de potencia'],['VE','El uso del multímetro']]],
+ [12,3,[['VE','Variadores de frecuencia'],['S','Síntesis U3'],['A','Autoevaluación U3']]],
+ [13,4,[['T','Temario Unidad 4'],['VC','Vídeo clase U4: Instalación y conexionado de motores']]],
+ [14,4,[['VE','Consideraciones en la elección de motores']]],
+ [15,4,[['AR','Conexionado de motor eléctrico doble estrella']]],
+ [16,4,[['SIM','Conexionado de motor eléctrico doble estrella']]],
+ [17,4,[['CI','Elección de motores']]],
+ [18,4,[['S','Síntesis U4'],['A','Autoevaluación U4']]],
+ [19,5,[['T','Temario Unidad 5'],['VC','Vídeo clase U5: Verificación y puesta en marcha'],['VE','Transformadores eléctricos']]],
+ [20,5,[['VE','Arranque de motores eléctricos']]],
+ [21,5,[['CI','Averías típicas en motores eléctricos']]],
+ [22,5,[['S','Síntesis U5'],['A','Autoevaluación U5']]],
+ [23,6,[['T','Temario Unidad 6'],['VC','Vídeo clase U6: Mantenimiento de máquinas eléctricas']]],
+ [24,6,[['CI','Mantenimiento mecánico y eléctrico']]],
+ [25,6,[['VE','Mantenimiento de sistemas electrónicos']]],
+ [26,7,[['T','Temario Unidad 7'],['VC','Vídeo clase U7: Prevención de riesgos']]],
+ [27,7,[['CI','Señalización de seguridad en lugares de trabajo']]],
+ [28,7,[['VE','La ISO 14001']]],
+ [29,7,[['S','Síntesis U7']]],
+ [30,7,[['A','Autoevaluación U7']]]]},
+
+{c:'ELAR05',n:'Documentación técnica',ab:'Documentación',w:'media',
+ u:{1:['Documentación técnico-administrativa de instalaciones y sistemas',['Documentos básicos de un proyecto','Fases del proyecto técnico','Tipos de proyectos','Normativa','Tramitaciones y legalización']],
+ 2:['Representación de las instalaciones y sistemas automatizados',['Sistemas de representación gráfica','Vistas, cortes y secciones','Tipos de líneas y grosores','Textos y tamaños de letra','Formatos de dibujo, cajetines y márgenes','Escalas normalizadas','Acotación','Normas de croquizado']],
+ 3:['Elaboración de la documentación gráfica con AutoCAD',['Diseño asistido por ordenador','Instalación e interfaz','Inicio, organización y guardado','Órdenes básicas de trazado','Control de vistas','Creación y modificación de objetos','Proceso de trabajo','Tipos de línea','Textos y anotación','Acotación: normas y estilos','Trazado y publicación']],
+ 4:['Documentación gráfica de proyectos eléctricos con CADe_SIMU',['Manual de CADe_SIMU']],
+ 5:['Confección de presupuestos',['Estructura de costes','Costes de mantenimiento','Unidades de obra','Presupuestos: estructura y cuadros']],
+ 6:['Elaboración de documentos del proyecto y manuales',['Anexos de cálculos y programación','Manuales de instrucciones','Prevención de riesgos laborales','Planes y manuales de calidad','Protección medioambiental','Manuales de mantenimiento']]},
+ s:[[2,1,[['T','Temario Unidad 1'],['VC','Vídeo clase U1: Documentación técnico-administrativa']]],
+ [3,1,[['CI','Documentación del proyecto']]],
+ [4,1,[['IN','Proceso de croquizado']]],
+ [5,1,[['CI','Tipos de proyectos']]],
+ [6,1,[['E360','Representación de instalaciones y sistemas automatizados']]],
+ [7,1,[['S','Síntesis U1'],['A','Autoevaluación U1']]],
+ [8,2,[['T','Temario Unidad 2'],['VC','Vídeo clase U2: Representación de instalaciones']]],
+ [9,2,[['CI','Tipos de líneas y grosores']]],
+ [10,2,[['IN','Formatos de dibujo']]],
+ [11,2,[['VE','Cortes y secciones']]],
+ [12,2,[['S','Síntesis U2'],['A','Autoevaluación U2']]],
+ [13,3,[['T','Temario Unidad 3'],['VC','Vídeo clase U3: Documentación gráfica con AutoCAD']]],
+ [14,3,[['VE','Introducción al AutoCAD']]],
+ [15,3,[['VE','Representaciones básicas'],['VE','Esquema unifilar con software ACAD']]],
+ [16,3,[['VE','Diseño asistido']]],
+ [17,3,[['S','Síntesis U3'],['A','Autoevaluación U3']]],
+ [18,4,[['T','Temario Unidad 4'],['VC','Vídeo clase U4: CADe_SIMU'],['VE','Proyecto técnico']]],
+ [19,4,[['VE','Diseño de circuitos']]],
+ [20,4,[['VE','Borneros, esquemas y referencias'],['S','Síntesis U4'],['A','Autoevaluación U4']]],
+ [21,5,[['T','Temario Unidad 5'],['VC','Vídeo clase U5: Confección de presupuestos']]],
+ [22,5,[['CI','Estructura y análisis de costes']]],
+ [23,5,[['VE','Presupuestos']]],
+ [24,5,[['S','Síntesis U5'],['A','Autoevaluación U5']]],
+ [25,6,[['T','Temario Unidad 6'],['VC','Vídeo clase U6: Documentos del proyecto y manuales']]],
+ [26,6,[['CI','Etiquetado de los residuos peligrosos']]],
+ [27,6,[['VE','Elaboración de documentos del proyecto y manuales']]],
+ [28,6,[['SIM','Documentación técnica en instalaciones eléctricas']]],
+ [29,6,[['S','Síntesis U6']]],
+ [30,6,[['A','Autoevaluación U6']]]]},
+
+{c:'ELAR07',n:'Informática industrial',ab:'Informática',w:'media',
+ u:{1:['Introducción a los sistemas informáticos industriales',['Breve historia de los sistemas informáticos','Concepto de sistema informático industrial','Aplicaciones en regulación y control industrial']],
+ 2:['Montaje y configuración de un sistema informático',['Arquitectura física','Componentes','Periféricos','Puertos de comunicaciones','Perturbaciones en el ámbito industrial']],
+ 3:['Instalación y configuración del software',['Software de un sistema informático','Componentes del sistema operativo','Funciones del sistema operativo','Instalación y configuración del SO','Programas de utilidades','Instalación y actualización de aplicaciones','Situaciones de emergencia']],
+ 4:['Instalación y configuración de redes locales',['Redes de datos','Equipos de interconexión','Topologías','Tipos de transmisión','Protocolos y estándares','Cableado estructurado','Direccionamiento IP','Configuración de redes en SO','Monitorización','Arquitectura cliente-servidor']],
+ 5:['Programación de equipos y sistemas industriales',['Software de programación','Programación estructurada','Pseudocódigo','Lenguajes de alto nivel','Entidades de los lenguajes de alto nivel','Juego de instrucciones']],
+ 6:['Configuración de páginas web industriales',['La web','HTML','Herramientas de diseño web','Estructura de archivos de una web','Publicación de una página web']],
+ 7:['Diagnóstico de averías en sistemas y programas informáticos',['Técnicas de verificación','Herramientas de software y hardware','Diagnóstico y verificación de averías','Técnicas de actuación','Registro de averías']]},
+ s:[[2,1,[['T','Temario Unidad 1'],['VC','Vídeo clase U1: Sistemas informáticos industriales']]],
+ [3,1,[['S','Síntesis U1'],['A','Autoevaluación U1']]],
+ [4,2,[['T','Temario Unidad 2'],['VC','Vídeo clase U2: Montaje y configuración']]],
+ [5,2,[['CI','El chasis y la placa base']]],
+ [6,2,[['IN','Jerarquía de memorias']]],
+ [7,2,[['VE','Montaje de un equipo informático']]],
+ [8,2,[['VE','Qué es un SAI y principales tipos']]],
+ [9,2,[['S','Síntesis U2'],['A','Autoevaluación U2']]],
+ [10,3,[['T','Temario Unidad 3'],['VC','Vídeo clase U3: Software del sistema informático']]],
+ [11,3,[['S','Síntesis U3']]],
+ [12,3,[['A','Autoevaluación U3']]],
+ [13,4,[['T','Temario Unidad 4'],['VC','Vídeo clase U4: Redes locales'],['LAB','Disección y análisis de direccionamiento IPv4']]],
+ [14,4,[['SIM','Elaboración del cableado RJ45'],['AR','Técnicas de cableado']]],
+ [15,4,[['CI','Ataques a redes']]],
+ [16,4,[['CI','Nivel de red']]],
+ [17,4,[['VE','Modelo TCP-IP']]],
+ [18,4,[['VE','Tipos de cables de red']]],
+ [19,4,[['S','Síntesis U4'],['A','Autoevaluación U4']]],
+ [20,5,[['T','Temario Unidad 5'],['VC','Vídeo clase U5: Programación de equipos y sistemas']]],
+ [21,5,[['CI','Introducción a la programación']]],
+ [22,5,[['IN','Árbol de cohesión'],['E360','Tablero de ajedrez']]],
+ [23,5,[['VE','Pseudocódigo']]],
+ [24,5,[['S','Síntesis U5'],['A','Autoevaluación U5']]],
+ [25,6,[['T','Temario Unidad 6'],['VC','Vídeo clase U6: Páginas web industriales']]],
+ [26,6,[['CI','Estructura de los archivos de una página web'],['VE','Edición de una pequeña página web']]],
+ [27,6,[['S','Síntesis U6'],['A','Autoevaluación U6']]],
+ [28,7,[['T','Temario Unidad 7'],['VC','Vídeo clase U7: Diagnóstico de averías informáticas']]],
+ [29,7,[['IN','Herramientas hardware de diagnóstico'],['VE','Clonación']]],
+ [30,7,[['S','Síntesis U7'],['A','Autoevaluación U7']]]]},
+
+{c:'ELAR18',n:'Itinerario Personal para la Empleabilidad I',ab:'IPE I',w:'baja',
+ u:{1:['Empleo y competencias profesionales actuales',['Opciones profesionales','Empleadores del sector y autoempleo','Acceso al empleo público','Aprendizaje y empleo en Europa','Competencias profesionales']],
+ 2:['Evaluación de riesgos profesionales',['La cultura preventiva','Daños a la salud del trabajador','Factores de riesgo laboral']],
+ 3:['Medidas de prevención y protección en la empresa',['Marco normativo básico','Derechos y deberes en PRL','Responsabilidades y sanciones','Representación de los trabajadores','Organización de la prevención','Sistema de gestión de la prevención','Principios y técnicas de prevención','Medidas de protección','Señalización de seguridad','Plan de autoprotección y emergencias','Primeros auxilios']],
+ 4:['Condiciones laborales (I)',['Derecho del trabajo: fuentes y principios','Relación laboral individual','Derechos y deberes','Inspección de Trabajo y jurisdicción social','Representación unitaria y sindical','El convenio colectivo']],
+ 5:['Condiciones laborales (II)',['El contrato de trabajo','Modalidades de contrato y fomento de la contratación','Modificación, suspensión y extinción']],
+ 6:['Condiciones laborales (III)',['La jornada de trabajo','El periodo de prueba','Actuales entornos laborales','Derecho procesal social']],
+ 7:['Seguridad Social',['La nómina','Acción protectora de la Seguridad Social','La protección por desempleo']],
+ 8:['Potencial profesional y auto-orientación laboral',['Autoconocimiento y evaluación personal','Preferencias profesionales y metas','Autoestima y búsqueda de empleo','Análisis DAFO personal','Hitos de la trayectoria vital','Itinerarios formativos']],
+ 9:['Aprendizaje autónomo y herramientas digitales',['Aprendizaje permanente','Adaptación al entorno laboral','El mundo digital aplicado a la empleabilidad','Plan de desarrollo individual']]},
+ s:[[2,1,[['T','Temario Unidad 1'],['VC','Vídeo clase U1: Empleo y competencias profesionales']]],
+ [3,1,[['IN','Perfil profesional']]],
+ [4,1,[['S','Síntesis U1'],['A','Autoevaluación U1']]],
+ [5,2,[['T','Temario Unidad 2'],['VC','Vídeo clase U2: Evaluación de riesgos profesionales']]],
+ [6,2,[['VE','Daños psicosociales en el trabajo']]],
+ [7,2,[['S','Síntesis U2']]],
+ [8,2,[['A','Autoevaluación U2']]],
+ [9,3,[['T','Temario Unidad 3'],['VC','Vídeo clase U3: Medidas de prevención y protección']]],
+ [10,3,[['CI','Plan de prevención de riesgos laborales'],['VE','Reanimación cardiopulmonar']]],
+ [11,3,[['S','Síntesis U3'],['A','Autoevaluación U3']]],
+ [12,4,[['T','Temario Unidad 4'],['VC','Vídeo clase U4: Condiciones laborales (I)']]],
+ [13,4,[['VE','Jerarquía normativa y principios de interpretación'],['CI','El convenio colectivo']]],
+ [14,4,[['S','Síntesis U4'],['A','Autoevaluación U4']]],
+ [15,5,[['T','Temario Unidad 5'],['VC','Vídeo clase U5: Condiciones laborales (II)'],['CI','Suspensión y extinción del contrato']]],
+ [16,5,[['VE','Suspensión, modificación y extinción del contrato']]],
+ [17,5,[['S','Síntesis U5'],['A','Autoevaluación U5']]],
+ [18,6,[['T','Temario Unidad 6'],['VC','Vídeo clase U6: Condiciones laborales (III)']]],
+ [19,6,[['S','Síntesis U6']]],
+ [20,6,[['A','Autoevaluación U6']]],
+ [21,7,[['T','Temario Unidad 7'],['VC','Vídeo clase U7: Seguridad Social']]],
+ [22,7,[['CI','La protección por desempleo']]],
+ [23,7,[['VE','La nómina']]],
+ [24,7,[['S','Síntesis U7'],['A','Autoevaluación U7']]],
+ [25,8,[['T','Temario Unidad 8'],['VC','Vídeo clase U8: Potencial profesional']]],
+ [26,8,[['S','Síntesis U8']]],
+ [27,8,[['A','Autoevaluación U8']]],
+ [28,9,[['T','Temario Unidad 9'],['VC','Vídeo clase U9: Aprendizaje autónomo']]],
+ [29,9,[['S','Síntesis U9']]],
+ [30,9,[['A','Autoevaluación U9']]]]},
+
+{c:'ELAR23',n:'Ampliación de Itinerario Personal para la Empleabilidad',ab:'Ampliación IPE',w:'baja',
+ u:{1:['Economía y administración: nociones básicas',['La toma de decisiones','Financiación personal','Economía social','Tipos de sociedades']],
+ 2:['El sistema fiscal',['La empresa y su entorno','La idea de negocio y proyecto emprendedor','Gestión administrativa de una empresa','El sistema tributario','Obligaciones fiscales y calendario fiscal']],
+ 3:['Concepto de marketing y análisis de mercado',['Concepto y funciones del marketing','El marketing en la gestión de la organización','Mercado, oferta y demanda','El método Lean Startup']],
+ 4:['Plan de marketing',['El plan de marketing','Análisis del mercado','Marketing mix: precio, producto, promoción y distribución']],
+ 5:['Los RRHH en la empresa',['Organización formal e informal','El departamento de RRHH','Modelos de gestión','Grupos profesionales','Necesidades de personal']],
+ 6:['La importancia de las habilidades interpersonales',['Liderazgo y motivación','Comunicación del departamento de RRHH','Habilidades interpersonales en los empleados']]},
+ s:[[2,1,[['T','Temario Unidad 1'],['VC','Vídeo clase U1: Economía y administración']]],
+ [3,1,[['IN','Personas jurídicas']]],
+ [4,1,[['S','Síntesis U1'],['A','Autoevaluación U1']]],
+ [5,2,[['T','Temario Unidad 2'],['VC','Vídeo clase U2: El sistema fiscal']]],
+ [6,2,[['CI','Sistema tributario']]],
+ [7,2,[['VE','IRPF: preguntas más comunes']]],
+ [8,2,[['S','Síntesis U2']]],
+ [9,2,[['A','Autoevaluación U2']]],
+ [10,3,[['T','Temario Unidad 3'],['VC','Vídeo clase U3: Marketing y análisis de mercado']]],
+ [11,3,[['S','Síntesis U3']]],
+ [13,3,[['A','Autoevaluación U3']]],
+ [14,4,[['T','Temario Unidad 4'],['VC','Vídeo clase U4: Plan de marketing']]],
+ [15,4,[['VE','Plan de marketing']]],
+ [16,4,[['S','Síntesis U4']]],
+ [17,4,[['A','Autoevaluación U4']]],
+ [18,5,[['T','Temario Unidad 5'],['VC','Vídeo clase U5: Los RRHH en la empresa']]],
+ [19,5,[['SIM','Contratemos al mejor']]],
+ [20,5,[['VE','Perfil profesional a través del profesiograma']]],
+ [21,5,[['S','Síntesis U5']]],
+ [23,5,[['A','Autoevaluación U5']]],
+ [24,6,[['T','Temario Unidad 6'],['VC','Vídeo clase U6: Habilidades interpersonales']]],
+ [25,6,[['CI','Teorías de motivación']]],
+ [26,6,[['VE','Técnicas de motivación laboral']]],
+ [27,6,[['VE','Jefe y líder']]],
+ [28,6,[['S','Síntesis U6']]],
+ [30,6,[['A','Autoevaluación U6']]]]},
+
+{c:'ELAR25',n:'Inglés Profesional (Grado Superior)',ab:'Inglés',w:'baja',
+ u:{1:['Living in the present',['The verb "To Be"','"Have Got" vs "To Have"','Present Simple','Present Continuous','Present Simple vs Continuous']],
+ 2:['What do you like?',['Likes and dislikes','Expressing existence','Wh- questions','Pronouns and possessive forms','Prepositions of time','Connectors']],
+ 3:['Exploring the past',['Past Simple','Past Continuous','Present Perfect Simple','Present Perfect vs Past Simple','Prepositions of place','Question tags']],
+ 4:["What's next?",['Comparative and superlative adjectives','Prepositions of movement','Expressing purpose','The imperative','The future']],
+ 5:['What would you do if…?',['Adjectives ending in -ed and -ing','Too vs Enough','Demonstratives','Relative clauses','Conditional types 0, 1, 2, 3']],
+ 6:['Work smarter',['Quantifiers','Modal verbs','Indefinite pronouns','The Saxon Genitive','The Passive Voice','Reported Speech']]},
+ s:[[2,1,[['T','Temario Unidad 1'],['VOC','Vocabulario Unidad 1'],['VC','Vídeo clases U1 (To be, Have got, Present Simple, Present Continuous)']]],
+ [3,1,[['VE','Present Simple and Present Continuous'],['IN','Adverbs of frequency']]],
+ [4,1,[['EJ','Ejercicios de gramática U1'],['D','Destrezas: Writing']]],
+ [5,1,[['S','Síntesis U1'],['A','Autoevaluación U1']]],
+ [6,2,[['T','Temario Unidad 2'],['VOC','Vocabulario Unidad 2'],['VC','Vídeo clases U2 (Like/dislike, There is/are, Question forms, Pronouns, Prepositions, Connectors)']]],
+ [7,2,[['IN','Prepositions of time'],['EJ','Ejercicios de gramática U2']]],
+ [8,2,[['D','Destrezas: Speaking']]],
+ [9,2,[['S','Síntesis U2'],['A','Autoevaluación U2']]],
+ [10,3,[['T','Temario Unidad 3'],['VOC','Vocabulario Unidad 3'],['VC','Vídeo clases U3 (Past Simple, To be in past, Used to, Past Continuous, Present Perfect, Prepositions, Question tags)']]],
+ [11,3,[['VE','Past Simple and Past Continuous']]],
+ [12,3,[['CI','Past Simple']]],
+ [13,3,[['IN','Prepositions of place'],['EJ','Ejercicios de gramática U3']]],
+ [14,3,[['D','Destrezas: Listening']]],
+ [15,3,[['S','Síntesis U3'],['A','Autoevaluación U3']]],
+ [16,4,[['T','Temario Unidad 4'],['VOC','Vocabulario Unidad 4'],['VC','Vídeo clases U4 (Comparatives, Superlatives, Prepositions of movement, Purpose, Infinitives/Gerunds, Imperative, Future)']]],
+ [17,4,[['CI','Comparatives and Superlatives'],['IN','Prepositions of movement']]],
+ [18,4,[['CI','Infinitives and Gerunds'],['VE','The future']]],
+ [19,4,[['EJ','Ejercicios de gramática U4'],['D','Destrezas: Reading']]],
+ [20,4,[['S','Síntesis U4'],['A','Autoevaluación U4']]],
+ [21,5,[['T','Temario Unidad 5'],['VOC','Vocabulario Unidad 5'],['VC','Vídeo clases U5 (-ed/-ing adjectives, Too/Enough, Demonstratives, Relative clauses, If-clauses)']]],
+ [22,5,[['VE','Relative pronouns']]],
+ [23,5,[['CI','Conditional clauses'],['VE','Conditionals']]],
+ [24,5,[['EJ','Ejercicios de gramática U5'],['D','Destrezas: Listening']]],
+ [25,5,[['S','Síntesis U5'],['A','Autoevaluación U5']]],
+ [26,6,[['T','Temario Unidad 6'],['VOC','Vocabulario Unidad 6'],['VC','Vídeo clases U6 (Quantifiers, Modals, Indefinite pronouns, Saxon Genitive, Passive, Reported Speech)']]],
+ [27,6,[['VE','Modals'],['IN','Modal verbs']]],
+ [28,6,[['VE','The passive voice'],['CI','The passive voice'],['VE','Reported Speech'],['EJ','Ejercicios de gramática U6'],['D','Destrezas: Reading']]],
+ [29,6,[['SIM','Concurso TV'],['E360','Vocabulario especializado']]],
+ [30,6,[['S','Síntesis U6'],['A','Autoevaluación U6']]]]}];
+
+/* ============ PLAN ============ */
+const DAYNAME=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const DL=['D','L','M','X','J','V','S'];
+const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const MESL=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const ROT={1:['ELAR01','ELAR18'],2:['ELAR02','ELAR23'],3:['ELAR03','ELAR05'],4:['ELAR04','ELAR07']};
+const SPECIAL={'2026-09-15':{solo:'ELAR25',lbl:'Bloque intensivo de Inglés'}};
+const START='2026-09-16';
+const EXAM='2027-05-19';
+
+/* ============ ITEMS ============ */
+const ITEMS=[];const BY={};
+SUBJECTS.forEach(sub=>{BY[sub.c]=sub;sub.items=[];
+ sub.s.forEach(([w,u,rs])=>{rs.forEach((r,i)=>{
+  const b={c:sub.c,w:w,u:u,type:r[0],opt:!!OPT[r[0]],ut:sub.u[u]?sub.u[u][0]:''};
+  if(r[0]==='T'&&sub.u[u]){
+   sub.u[u][1].forEach((tp,j)=>sub.items.push(Object.assign({},b,{id:sub.c+'|'+w+'|'+u+'|T'+j,txt:u+'.'+(j+1)+' '+tp,min:12})));
+  }else sub.items.push(Object.assign({},b,{id:sub.c+'|'+w+'|'+u+'|'+r[0]+i,txt:r[1],min:MIN[r[0]]||15}));
+ });});
+ sub.wavg=Math.max(3,Math.ceil(sub.items.length/29));
+ sub.items.forEach(x=>ITEMS.push(x));});
+
+/* ============ ESTADO ============ */
+const KEY='universae-arbi-v3';let DONE=new Set();
+async function load(){try{if(window.storage){const r=await window.storage.get(KEY,false);if(r&&r.value){DONE=new Set(JSON.parse(r.value));return;}}}catch(e){}
+ try{const v=localStorage.getItem(KEY);if(v)DONE=new Set(JSON.parse(v));}catch(e){}}
+async function save(){const a=JSON.stringify([...DONE]);
+ try{if(window.storage){await window.storage.set(KEY,a,false);}}catch(e){}
+ try{localStorage.setItem(KEY,a);}catch(e){}}
+
+/* ============ FECHAS ============ */
+function d(s){const p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2],12,0,0);}
+function key(t){return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');}
+function addD(t,n){const x=new Date(t);x.setDate(x.getDate()+n);return x;}
+function mondayOf(t){const x=new Date(t);const dw=x.getDay();x.setDate(x.getDate()-(dw===0?6:dw-1));x.setHours(12,0,0,0);return x;}
+function diffD(a,b){return Math.round((d(b)-a)/86400000);}
+const TODAY=new Date();TODAY.setHours(12,0,0,0);
+const TKEY=key(TODAY);
+function weekOf(k){const t=d(k);for(const w of WEEKS){if(t>=d(w.s)&&t<=d(w.e))return w;}return null;}
+function refWeek(){const w=weekOf(TKEY);if(w)return w.n;let last=0;WEEKS.forEach(x=>{if(d(x.e)<TODAY)last=x.n;});return last;}
+const RW=refWeek();
+function weekFrac(){const w=weekOf(TKEY);if(!w)return 1;
+ const tot=Math.round((d(w.e)-d(w.s))/86400000)+1;
+ const el=Math.round((TODAY-d(w.s))/86400000)+1;
+ return Math.min(1,Math.max(0,el/tot));}
+const WF=weekFrac();
+function deadline(it){const w=WEEKS.find(x=>x.n===it.w);return w?w.e:null;}
+function dlLbl(it){const w=WEEKS.find(x=>x.n===it.w);if(!w)return '';const t=d(w.e);return t.getDate()+' '+MES[t.getMonth()];}
+
+/* ============ RITMO ============ */
+function stat(sub){
+ const prev=sub.items.filter(x=>x.w<RW).length;
+ const cur=sub.items.filter(x=>x.w===RW).length;
+ const exp=prev+Math.round(cur*WF);
+ const done=sub.items.filter(x=>DONE.has(x.id)).length;
+ const undone=sub.items.filter(x=>!DONE.has(x.id));
+ const late=undone.slice(0,Math.max(0,exp-done));
+ const delta=done-exp;
+ let k,l;
+ if(delta>0){k='ade';l='Por delante';}
+ else if(delta===0){k='dia';l='Al día';}
+ else if(-delta<=sub.wavg){k='det';l=(exp-done)+' por hacer';}
+ else {k='mal';l=(exp-done)+' atrasadas';}
+ return {k:k,l:l,done:done,tot:sub.items.length,exp:exp,late:late,pct:Math.round(100*done/sub.items.length),delta:delta};
+}
+function next(sub,n){const o=sub.items.filter(x=>!DONE.has(x.id));return n?o.slice(0,n):o[0];}
+function planFor(k){
+ if(SPECIAL[k])return {sp:SPECIAL[k]};
+ if(k<START)return {pre:true};
+ const dw=d(k).getDay();
+ if(dw===0||dw===6)return {free:true};
+ if(dw===5)return {pend:true};
+ return {subs:ROT[dw]};
+}
+
+/* ============ RENDER ============ */
+let TAB='hoy';let SEL=TKEY;let ANCHOR=mondayOf(TODAY);
+const app=document.getElementById('app');
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function row(it,cls){
+ const on=DONE.has(it.id);const over=!on&&it.w<RW;
+ return `<label class="tk${on?' on':''}${it.opt?' opt':''}${cls?' '+cls:''}">
+ <input type="checkbox" data-id="${it.id}"${on?' checked':''}><span class="tk-b"></span>
+ <span class="tk-c"><span class="tk-t">${esc(it.txt)}</span>
+ <span class="tk-m">${TNAME[it.type]} · U${it.u} · ${it.min} min · <span class="${over?'over':''}">S${it.w} · ${dlLbl(it)}</span>${it.opt?' · opcional':''}</span></span></label>`;
+}
+
+function pill(s){const ic={ade:'&#128081;',dia:'',det:'',mal:''}[s.k];
+ return `<span class="pill ${s.k}">${ic?ic+' ':''}${s.l}</span>`;}
+
+function subBlock(code,slot){
+ const sub=BY[code];const s=stat(sub);
+ const nx=next(sub);
+ let h=`<div class="sb ${s.k}">
+  <div class="sb-h"><div><span class="sb-slot">${slot}</span><h2>${esc(sub.n)}</h2></div>${pill(s)}</div>
+  <div class="prog"><span class="pbar ${s.k}" style="width:${s.pct}%"></span><i style="left:${Math.round(100*s.exp/s.tot)}%"></i></div>
+  <div class="prog-m"><span>${s.done} de ${s.tot} hechas · ${s.pct}%</span><span>meta de hoy: ${s.exp}</span></div>`;
+ if(!nx){h+=`<p class="allok">Asignatura terminada.</p></div>`;return h;}
+ h+=`<div class="first"><span class="first-k">Abre esto primero</span><div class="first-t">${esc(nx.txt)}</div>
+  <div class="first-m">${TNAME[nx.type]} · Unidad ${nx.u} · ${esc(nx.ut)}</div></div>`;
+ if(s.k==='det'||s.k==='mal'){
+  h+=`<div class="catch"><p class="catch-h">${s.late.length} tarea${s.late.length>1?'s':''} para ponerte al día</p>
+   ${s.late.map(i=>row(i)).join('')}</div>`;
+ }else{
+  h+=`<div class="cont"><p class="cont-h">Y sigues por aquí mientras te dure la hora</p>
+   ${next(sub,6).map(i=>row(i)).join('')}</div>`;
+ }
+ return h+`</div>`;
+}
+
+function strip(){
+ let h=`<div class="strip"><button class="nav" data-nav="-7">&#8249;</button><div class="days">`;
+ for(let i=0;i<7;i++){
+  const t=addD(ANCHOR,i),k=key(t),p=planFor(k);
+  const w=weekOf(k);
+  const cls=[k===SEL?'sel':'',k===TKEY?'today':'',p.free||p.pre?'off':'',p.pend?'pend':''].join(' ');
+  let tag='';
+  if(p.sp)tag='Inglés';else if(p.pend)tag='Pendientes';else if(p.subs)tag=p.subs.map(c=>BY[c].ab.split(' ')[0]).join(' + ');else tag=p.pre?'—':'Libre';
+  h+=`<button class="day ${cls}" data-day="${k}">
+   <span class="day-l">${DL[t.getDay()]}</span><span class="day-n">${t.getDate()}</span>
+   <span class="day-t">${esc(tag)}</span></button>`;
+ }
+ const wk=weekOf(key(ANCHOR))||weekOf(key(addD(ANCHOR,4)));
+ h+=`</div><button class="nav" data-nav="7">&#8250;</button></div>
+  <p class="strip-m">${wk?'Semana '+wk.n+' de 34 · '+wk.l+(wk.sp?' · '+wk.sp:''):'Periodo sin clases'}</p>`;
+ return h;
+}
+
+function urgency(){
+ const dx=diffD(TODAY,EXAM);
+ const aut=ITEMS.filter(x=>x.type==='A'&&!DONE.has(x.id)).sort((a,b)=>a.w-b.w)[0];
+ let an='—',ad=0;
+ if(aut){const w=WEEKS.find(x=>x.n===aut.w);ad=diffD(TODAY,w.e);an=BY[aut.c].ab+' U'+aut.u;}
+ const tot=ITEMS.length,dn=ITEMS.filter(x=>DONE.has(x.id)).length;
+ const exp=SUBJECTS.reduce((a,s)=>a+stat(s).exp,0);
+ return `<div class="urg">
+  <div class="u"><b>${dx}</b><span>días para los exámenes presenciales</span></div>
+  <div class="u ${ad<7?'hot':''}"><b>${ad>=0?ad:0}</b><span>días para cerrar ${esc(an)}</span></div>
+  <div class="u ${dn<exp?'hot':''}"><b>${dn}/${exp}</b><span>hechas de las que tocaban</span></div>
+ </div>`;
+}
+
+function viewHoy(){
+ const k=SEL,t=d(k),p=planFor(k);
+ let h=urgency()+strip();
+ h+=`<div class="dayhead"><h1>${DAYNAME[t.getDay()]} ${t.getDate()} de ${MESL[t.getMonth()]}</h1>
+  ${k===TKEY?'<span class="badge">Hoy</span>':`<button class="link" data-day="${TKEY}">Volver a hoy</button>`}</div>`;
+ if(p.pre)return h+`<div class="note">El plan de dos asignaturas al día arranca el miércoles 16 de septiembre.</div>`;
+ if(p.free)return h+`<div class="note">Día libre. Si te apetece adelantar, entra en Asignaturas y sigue por donde lo dejaste.</div>`;
+ if(p.sp){
+  const s=stat(BY[p.solo=p.sp.solo]);
+  return h+`<div class="note">${p.sp.lbl}: hoy no hay rotación. Vas a por Inglés hasta donde llegues. Si Universae solo te tiene abierta la Unidad 1, haz esa entera y el resto según se publiquen.</div>`+subBlock(p.sp.solo,'Todo el día');
+ }
+ if(p.pend){
+  const all=[];SUBJECTS.forEach(s=>{const st=stat(s);if(st.late.length)all.push([s,st]);});
+  all.sort((a,b)=>(a[1].k==='mal'?0:1)-(b[1].k==='mal'?0:1)||b[1].late.length-a[1].late.length);
+  h+=`<div class="note">Viernes: pendientes y apuntes. Empieza por lo rojo. Si no hay nada rojo, pasa los apuntes de la semana.</div>`;
+  if(!all.length)return h+`<div class="sb dia"><p class="allok">No tienes nada atrasado. Dedica las 2 h a apuntes y a adelantar la asignatura que peor lleves.</p></div>`;
+  all.forEach(([s,st])=>{h+=`<div class="sb ${st.k}"><div class="sb-h"><div><h2>${esc(s.n)}</h2></div>${pill(st)}</div>
+   ${st.late.map(i=>row(i)).join('')}</div>`;});
+  return h;
+ }
+ h+=subBlock(p.subs[0],'Primera hora · fuerte');
+ h+=subBlock(p.subs[1],'Segunda hora · ligera');
+ return h;
+}
+
+function viewAsig(){
+ let h=`<div class="head"><h1>Asignaturas</h1><p>Marca todo lo que hagas, vídeos e infografías incluidos. Lo primero sin marcar es lo que te aparece como "abre esto primero" en tu día.</p></div>`;
+ const ord=SUBJECTS.slice().sort((a,b)=>{const r={mal:0,det:1,dia:2,ade:3};return r[stat(a).k]-r[stat(b).k];});
+ ord.forEach(sub=>{
+  const s=stat(sub);
+  h+=`<details class="sub ${s.k}"><summary>
+   <span class="sub-n">${esc(sub.n)}</span>${pill(s)}
+   <span class="sub-p"><span class="prog"><span class="pbar ${s.k}" style="width:${s.pct}%"></span><i style="left:${Math.round(100*s.exp/s.tot)}%"></i></span>${s.pct}%</span></summary>`;
+  Object.keys(sub.u).forEach(un=>{
+   const its=sub.items.filter(x=>x.u==+un);
+   const dn=its.filter(x=>DONE.has(x.id)).length;
+   h+=`<div class="unit"><h3>Unidad ${un} · ${esc(sub.u[un][0])} <em>${dn}/${its.length}</em></h3>
+    ${its.map(i=>row(i)).join('')}</div>`;});
+  h+=`</details>`;});
+ return h;
+}
+
+function viewCal(){
+ let h=`<div class="head"><h1>Calendario del curso</h1><p>Las semanas en rojo concentran cuatro o más autoevaluaciones.</p></div><div class="cal">`;
+ WEEKS.forEach(w=>{
+  const ts=ITEMS.filter(x=>x.w===w.n),ae=ts.filter(x=>x.type==='A');
+  const dn=ts.filter(x=>DONE.has(x.id)).length;
+  h+=`<div class="cw ${w.n===RW?'now':''} ${w.sp?'sp':''} ${ae.length>=4?'hot':''}">
+   <div class="cw-n">S${w.n}</div><div class="cw-d">${w.l}</div>
+   ${w.sp?`<div class="cw-sp">${w.sp}</div>`:`<div class="cw-b"><span style="width:${ts.length?100*dn/ts.length:0}%"></span></div>
+   <div class="cw-m">${ts.length} tareas${ae.length?` · <b>${ae.length} autoeval.</b>`:''}</div>`}</div>`;
+  const g=GAPS.find(x=>x.after===w.n);if(g)h+=`<div class="gap">${g.txt}</div>`;});
+ return h+`</div>`;
+}
+
+function viewPlan(){
+ const tot=ITEMS.reduce((a,x)=>a+x.min,0);
+ return `<div class="head"><h1>Tu plan</h1><p>2 h al día, dos asignaturas: una fuerte y una ligera. Viernes para pendientes y apuntes.</p></div>
+<div class="blk"><table class="tb">
+<tr><th>Día</th><th>Primera hora · fuerte</th><th>Segunda hora · ligera</th></tr>
+<tr><td>Lunes</td><td>Sistemas eléctricos, neumáticos e hidráulicos</td><td>Itinerario Personal Empleabilidad I</td></tr>
+<tr><td>Martes</td><td>Sistemas secuenciales programables</td><td>Ampliación IPE</td></tr>
+<tr><td>Miércoles</td><td>Sistemas de medida y regulación</td><td>Documentación técnica</td></tr>
+<tr><td>Jueves</td><td>Sistemas de potencia</td><td>Informática industrial</td></tr>
+<tr><td>Viernes</td><td colspan="2">Pendientes y apuntes de todas</td></tr>
+</table>
+<p class="blk-s">Inglés sale de la rotación: lo liquidas aparte. Si se te atasca, vuelve a meterlo los viernes.</p></div>
+<div class="blk"><h2>Qué significan los colores</h2>
+<ul class="leg">
+<li><span class="pill ade">&#128081; Por delante</span> Vas por encima de la temporalización. Es donde quieres estar antes de abril.</li>
+<li><span class="pill dia">Al día</span> Justo en la marca. La rayita vertical de la barra es esa marca.</li>
+<li><span class="pill det">3 por hacer</span> Menos de una semana de retraso. Se arregla el viernes.</li>
+<li><span class="pill mal">12 atrasadas</span> Más de una semana. Esta asignatura sube al principio de la lista y te salen todas las pendientes en el día.</li>
+</ul></div>
+<div class="blk"><h2>Los números</h2><table class="tb">
+<tr><td>Material del curso</td><td><b>${(tot/60).toFixed(0)} h</b></td></tr>
+<tr><td>Tareas marcables</td><td><b>${ITEMS.length}</b></td></tr>
+<tr><td>Tu ritmo</td><td><b>10 h por semana</b></td></tr>
+<tr><td>Hasta el examen</td><td><b>unas 320 h</b></td></tr>
+</table>
+<p class="blk-s">Te sobran unas 115 h. Ese colchón es lo que te permite llegar holgada a la semana 30, donde las nueve asignaturas cierran autoevaluación a la vez.</p></div>
+<div class="blk"><h2>Copia de seguridad</h2>
+<div class="btns"><button id="exp">Exportar</button><button id="imp">Importar</button><button id="rst" class="danger">Reiniciar</button></div>
+<textarea id="io" placeholder="Al exportar aparece aquí tu copia."></textarea></div>`;
+}
+
+const VIEWS={hoy:viewHoy,asignaturas:viewAsig,calendario:viewCal,plan:viewPlan};
+const TABS=[['hoy','Mi día'],['asignaturas','Asignaturas'],['calendario','Calendario'],['plan','Plan']];
+
+function render(){
+ const dn=ITEMS.filter(x=>DONE.has(x.id)).length;
+ app.innerHTML=`<div class="shell">
+  <header class="top"><div class="brand"><span class="mark"></span>Automatización y Robótica Industrial · Universae</div>
+   <div class="gp">${dn} de ${ITEMS.length}</div></header>
+  <nav class="tabs">${TABS.map(([k,l])=>`<button data-tab="${k}"${TAB===k?' class="on"':''}>${l}</button>`).join('')}</nav>
+  <main>${VIEWS[TAB]()}</main></div>`;
+ app.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{TAB=b.dataset.tab;render();window.scrollTo(0,0);});
+ app.querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{SEL=b.dataset.day;ANCHOR=mondayOf(d(SEL));render();});
+ app.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>{ANCHOR=addD(ANCHOR,+b.dataset.nav);render();});
+ app.querySelectorAll('input[data-id]').forEach(cb=>cb.onchange=()=>{
+  cb.checked?DONE.add(cb.dataset.id):DONE.delete(cb.dataset.id);save();render();});
+ const e=document.getElementById('exp');
+ if(e){e.onclick=()=>{document.getElementById('io').value=JSON.stringify([...DONE]);};
+  document.getElementById('imp').onclick=()=>{try{DONE=new Set(JSON.parse(document.getElementById('io').value));save();render();}catch(x){document.getElementById('io').value='Copia no válida.';}};
+  document.getElementById('rst').onclick=()=>{if(confirm('Se borra todo tu progreso. ¿Seguro?')){DONE=new Set();save();render();}};}
+}
+
+/* ============ ESTILO ============ */
+const css=document.createElement('style');
+css.textContent=`
+#app{--paper:#EFF2F5;--ink:#13263A;--ink2:#546A82;--line:#C6D1DC;--surf:#fff;--navy:#1B4F8A;
+ --go:#0E7C4A;--rose:#D6317B;--amber:#E07B00;--red:#C62828;
+ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;color:var(--ink);background:var(--paper);
+ font-variant-numeric:tabular-nums;line-height:1.5;-webkit-font-smoothing:antialiased;}
+#app *{box-sizing:border-box;margin:0;padding:0;}
+.shell{max-width:900px;margin:0 auto;padding:0 16px 90px;}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 0 12px;flex-wrap:wrap;}
+.brand{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--ink2);}
+.mark{width:10px;height:10px;border-radius:50%;background:var(--navy);box-shadow:0 0 0 3px rgba(27,79,138,.16);}
+.gp{font-size:12.5px;color:var(--ink2);}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto;}
+.tabs button{border:0;background:none;font:inherit;font-size:14px;color:var(--ink2);padding:10px 14px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
+.tabs button.on{color:var(--navy);border-bottom-color:var(--navy);font-weight:600;}
+.tabs button:focus-visible{outline:2px solid var(--navy);outline-offset:-2px;}
+main{padding-top:20px;}
+.urg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
+.u{background:var(--surf);border:1px solid var(--line);border-radius:4px;padding:11px 12px;}
+.u b{display:block;font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1.1;}
+.u span{font-size:11.5px;color:var(--ink2);display:block;margin-top:2px;}
+.u.hot{border-color:var(--red);background:#FDEDED;}
+.u.hot b{color:var(--red);}
+.strip{display:flex;align-items:stretch;gap:6px;}
+.nav{border:1px solid var(--line);background:var(--surf);color:var(--ink2);font-size:18px;width:30px;border-radius:4px;cursor:pointer;flex:none;}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;flex:1;}
+.day{border:1px solid var(--line);background:var(--surf);border-radius:4px;padding:7px 3px 8px;cursor:pointer;font:inherit;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0;}
+.day-l{font-size:10.5px;color:var(--ink2);}
+.day-n{font-size:17px;font-weight:700;line-height:1.1;}
+.day-t{font-size:9.5px;color:var(--ink2);text-align:center;line-height:1.25;overflow:hidden;}
+.day.off{background:var(--paper);opacity:.6;}
+.day.pend{background:#FFF8EC;}
+.day.today{border-color:var(--navy);border-width:2px;}
+.day.sel{background:var(--navy);border-color:var(--navy);}
+.day.sel .day-l,.day.sel .day-n,.day.sel .day-t{color:#fff;}
+.day:focus-visible{outline:2px solid var(--navy);outline-offset:2px;}
+.strip-m{font-size:12px;color:var(--ink2);margin:8px 0 18px;}
+.dayhead{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+.dayhead h1{font-size:clamp(21px,4.6vw,30px);font-weight:700;letter-spacing:-.02em;}
+.badge{font-size:11.5px;background:var(--navy);color:#fff;border-radius:3px;padding:3px 8px;}
+.link{border:0;background:none;font:inherit;font-size:13px;color:var(--navy);text-decoration:underline;cursor:pointer;padding:0;}
+.note{background:#FFF8EC;border:1px solid #E6CF9E;border-radius:4px;padding:13px 15px;font-size:13.5px;margin-bottom:14px;}
+.sb{background:var(--surf);border:1px solid var(--line);border-left-width:5px;border-radius:4px;padding:16px;margin-bottom:14px;}
+.sb.ade{border-left-color:var(--rose);}
+.sb.dia{border-left-color:var(--go);}
+.sb.det{border-left-color:var(--amber);}
+.sb.mal{border-left-color:var(--red);background:#FFF7F7;}
+.sb-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+.sb-slot{display:block;font-size:11px;color:var(--ink2);margin-bottom:2px;}
+.sb h2{font-size:17px;font-weight:600;letter-spacing:-.01em;}
+.pill{font-size:11.5px;border-radius:99px;padding:3px 10px;white-space:nowrap;flex:none;}
+.pill.ade{background:#FDE7F1;color:var(--rose);}
+.pill.dia{background:#E4F3EC;color:var(--go);}
+.pill.det{background:#FCF0DC;color:#9A5600;}
+.pill.mal{background:#FBE0E0;color:var(--red);font-weight:600;}
+.prog{position:relative;display:block;height:8px;background:var(--line);border-radius:99px;margin-top:12px;overflow:visible;}
+.prog .pbar{position:absolute;left:0;top:0;height:100%;border-radius:99px;}
+.pbar.ade{background:var(--rose);}
+.pbar.dia{background:var(--go);}
+.pbar.det{background:var(--amber);}
+.pbar.mal{background:var(--red);}
+.prog i{position:absolute;top:-3px;width:2px;height:14px;background:var(--ink);opacity:.55;}
+.prog-m{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink2);margin-top:7px;}
+.first{background:var(--paper);border:1px dashed var(--line);border-radius:4px;padding:12px 14px;margin:14px 0 4px;}
+.first-k{font-size:11px;color:var(--navy);font-weight:600;}
+.first-t{font-size:17px;font-weight:600;margin-top:3px;letter-spacing:-.01em;}
+.first-m{font-size:12px;color:var(--ink2);margin-top:3px;}
+.cont-h,.catch-h{font-size:12px;color:var(--ink2);margin:14px 0 2px;}
+.catch-h{color:var(--red);font-weight:600;}
+.allok{font-size:13.5px;color:var(--go);padding:6px 0;}
+.tk{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line);cursor:pointer;}
+.tk input{position:absolute;opacity:0;width:0;height:0;}
+.tk-b{width:16px;height:16px;border:1.5px solid var(--ink2);border-radius:3px;flex:none;margin-top:2px;position:relative;}
+.tk input:focus-visible+.tk-b{outline:2px solid var(--navy);outline-offset:2px;}
+.tk.on .tk-b{background:var(--go);border-color:var(--go);}
+.tk.on .tk-b::after{content:"";position:absolute;left:5px;top:1px;width:4px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(43deg);}
+.tk-c{display:flex;flex-direction:column;}
+.tk-t{font-size:14.5px;}
+.tk-m{font-size:11px;color:var(--ink2);}
+.tk-m .over{color:var(--red);font-weight:600;}
+.tk.on .tk-t{color:var(--ink2);text-decoration:line-through;}
+.tk.opt .tk-t{color:var(--ink2);}
+.head{margin-bottom:20px;}
+.head h1{font-size:25px;font-weight:700;letter-spacing:-.015em;}
+.head p{color:var(--ink2);font-size:13.5px;margin-top:5px;max-width:62ch;}
+.sub{background:var(--surf);border:1px solid var(--line);border-left-width:5px;border-radius:4px;margin-bottom:10px;}
+.sub.ade{border-left-color:var(--rose);}.sub.dia{border-left-color:var(--go);}
+.sub.det{border-left-color:var(--amber);}.sub.mal{border-left-color:var(--red);}
+.sub summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:13px 15px;flex-wrap:wrap;}
+.sub summary::-webkit-details-marker{display:none;}
+.sub-n{font-size:15px;font-weight:600;flex:1;min-width:160px;}
+.sub-p{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--ink2);min-width:150px;}
+.sub-p .prog{margin-top:0;width:100px;}
+.unit{border-top:1px solid var(--line);padding:13px 15px;}
+.unit h3{font-size:14px;font-weight:600;margin-bottom:4px;}
+.unit h3 em{font-style:normal;color:var(--ink2);font-weight:400;font-size:12px;margin-left:6px;}
+.cal{display:grid;grid-template-columns:repeat(auto-fill,minmax(146px,1fr));gap:8px;}
+.cw{background:var(--surf);border:1px solid var(--line);border-radius:4px;padding:10px 11px;}
+.cw.now{border-color:var(--navy);box-shadow:inset 3px 0 0 var(--navy);}
+.cw.sp{background:#FFF8EC;border-color:#E6CF9E;}
+.cw.hot{box-shadow:inset 3px 0 0 var(--red);}
+.cw-n{font-size:11.5px;color:var(--ink2);}
+.cw-d{font-size:13.5px;font-weight:600;margin:1px 0 7px;}
+.cw-sp{font-size:12px;color:#7A5A12;}
+.cw-b{height:4px;background:var(--line);border-radius:2px;overflow:hidden;}
+.cw-b>span{display:block;height:100%;background:var(--go);}
+.cw-m{font-size:11px;color:var(--ink2);margin-top:5px;}
+.cw-m b{color:var(--red);font-weight:600;}
+.gap{grid-column:1/-1;font-size:12px;color:var(--ink2);border-top:1px dashed var(--line);border-bottom:1px dashed var(--line);padding:6px 2px;}
+.blk{background:var(--surf);border:1px solid var(--line);border-radius:4px;padding:16px;margin-bottom:12px;}
+.blk h2{font-size:16px;font-weight:600;}
+.blk-s{font-size:13px;color:var(--ink2);margin-top:10px;}
+.tb{width:100%;border-collapse:collapse;font-size:13.5px;}
+.tb th{text-align:left;font-size:12px;color:var(--ink2);border-bottom:1px solid var(--line);padding:6px 10px 6px 0;}
+.tb td{padding:8px 10px 8px 0;border-bottom:1px solid var(--line);}
+.leg{list-style:none;display:flex;flex-direction:column;gap:9px;font-size:13.5px;margin-top:12px;}
+.leg li{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 10px;}
+.btns button{font:inherit;font-size:13px;padding:8px 14px;border:1px solid var(--navy);background:var(--navy);color:#fff;border-radius:3px;cursor:pointer;}
+.btns button:nth-child(2){background:none;color:var(--navy);}
+.btns button.danger{background:none;border-color:var(--red);color:var(--red);}
+#io{width:100%;min-height:70px;font:inherit;font-size:12px;padding:10px;border:1px solid var(--line);border-radius:3px;background:var(--paper);resize:vertical;}
+@media (max-width:620px){.urg{grid-template-columns:1fr;}.u{display:flex;align-items:baseline;gap:8px;}.u b{font-size:20px;}.u span{margin-top:0;}.day-t{display:none;}}
+`;
+document.head.appendChild(css);
+
+/* ===== v4: racha, autoevaluaciones, apuntes, historial ===== */
+const K4='universae-arbi-v4';
+let AEV={},NOTES=new Set(),FRZ=new Set(),STUD=new Set(),LOG=[];
+const ROTSEQ=[['ELAR01','ELAR18'],['ELAR02','ELAR23'],['ELAR03','ELAR05'],['ELAR04','ELAR07'],'PEND'];
+const DIF={v:'\u{1F7E2}',a:'\u{1F49B}',r:'\u{1F3EE}'};
+
+async function load4(){let o=null;
+ try{if(window.storage){const r=await window.storage.get(K4,false);if(r&&r.value)o=JSON.parse(r.value);}}catch(e){}
+ if(!o){try{const v=localStorage.getItem(K4);if(v)o=JSON.parse(v);}catch(e){}}
+ if(o){AEV=o.a||{};NOTES=new Set(o.n||[]);FRZ=new Set(o.f||[]);STUD=new Set(o.s||[]);LOG=o.l||[];}}
+async function save4(){const a=JSON.stringify({a:AEV,n:[...NOTES],f:[...FRZ],s:[...STUD],l:LOG});
+ try{if(window.storage){await window.storage.set(K4,a,false);}}catch(e){}
+ try{localStorage.setItem(K4,a);}catch(e){}}
+function stamp(){const t=new Date();return key(t)+' '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');}
+function log(s){LOG.push(stamp()+'  '+s);STUD.add(TKEY);save4();}
+
+function isLect(k){const t=d(k);return t.getDay()>0&&t.getDay()<6&&!!weekOf(k);}
+function weekDays(k){const m=mondayOf(d(k));const L=[];
+ for(let i=0;i<5;i++){const x=key(addD(m,i));if(isLect(x))L.push(x);}
+ const fz=L.filter(x=>FRZ.has(x)).length;
+ for(let i=5;i<5+fz&&i<7;i++)L.push(key(addD(m,i)));
+ return L;}
+function planFor(k){
+ if(SPECIAL[k])return {sp:SPECIAL[k]};
+ if(k<START)return {pre:true};
+ if(FRZ.has(k))return {frozen:true};
+ const L=weekDays(k),i=L.indexOf(k);
+ if(i<0)return {free:true};
+ const eff=i-L.slice(0,i).filter(x=>FRZ.has(x)).length;
+ const p=ROTSEQ[eff];
+ if(!p)return {free:true};
+ return p==='PEND'?{pend:true}:{subs:p};}
+
+function streak(){let n=0,t=new Date(TODAY);
+ if(!STUD.has(TKEY)&&!FRZ.has(TKEY))t=addD(t,-1);
+ for(let g=0;g<400;g++){const k=key(t);
+  if(k<'2026-09-15')break;
+  if(!isLect(k)&&!FRZ.has(k)){t=addD(t,-1);continue;}
+  if(STUD.has(k)||FRZ.has(k)){n++;t=addD(t,-1);}else break;}
+ return n;}
+function frzWeek(k){return weekDays(k).filter(x=>FRZ.has(x)).length;}
+
+/* unidades completas y apuntes */
+function unitDone(sub,u){return sub.items.filter(x=>x.u==u).every(x=>DONE.has(x.id));}
+function unitsReady(sub){return Object.keys(sub.u).filter(u=>unitDone(sub,u)&&!NOTES.has(sub.c+'|'+u));}
+
+/* ===== autoevaluaciones ===== */
+function aevKey(it){return it.c+'|'+it.u;}
+function aevBox(it){const k=aevKey(it),ar=AEV[k]||[];
+ return `<div class="aev" id="aev-${k.replace('|','-')}">
+  <div class="aev-r"><button class="stp" data-aev="dec" data-k="${k}">&minus;</button>
+   <span class="aev-n">${ar.length} intento${ar.length===1?'':'s'}</span>
+   <button class="stp" data-aev="inc" data-k="${k}">+</button>
+   <input class="aev-g" data-g="${k}" placeholder="nota" inputmode="decimal">
+   <span class="aev-d">${Object.keys(DIF).map(x=>`<button class="dif" data-dif="${x}" data-k="${k}">${DIF[x]}</button>`).join('')}</span></div>
+  ${ar.length?`<div class="aev-l">${ar.map(a=>`${a.d} · ${a.n||'—'} · ${DIF[a.f]||''}`).join('<br>')}</div>`:''}</div>`;}
+
+function row(it,cls){
+ const on=DONE.has(it.id),over=!on&&it.w<RW;
+ let h=`<label class="tk${on?' on':''}${it.opt?' opt':''}${cls?' '+cls:''}">
+ <input type="checkbox" data-id="${it.id}"${on?' checked':''}><span class="tk-b"></span>
+ <span class="tk-c"><span class="tk-t">${esc(it.txt)}</span>
+ <span class="tk-m">${TNAME[it.type]} · U${it.u} · ${it.min} min · <span class="${over?'over':''}">S${it.w} · ${dlLbl(it)}</span>${it.opt?' · opcional':''}</span></span></label>`;
+ if(it.type==='A')h+=aevBox(it);
+ return h;}
+
+/* ===== vista HOY ===== */
+function viewHoy(){
+ const k=SEL,t=d(k),p=planFor(k);
+ let h=streakBar()+urgency()+strip();
+ h+=`<div class="dayhead"><h1>${DAYNAME[t.getDay()]} ${t.getDate()} de ${MESL[t.getMonth()]}</h1>
+  ${k===TKEY?'<span class="badge">Hoy</span>':`<button class="link" data-day="${TKEY}">Volver a hoy</button>`}</div>`;
+ if(p.pre)return h+`<div class="note">El plan arranca el miércoles 16 de septiembre.</div>`;
+ if(p.frozen)return h+`<div class="note">Día congelado. Tu racha sigue intacta y el resto de la semana se ha corrido un día.</div>`;
+ if(p.free)return h+`<div class="note">Día de descanso. No rompe racha. Si quieres adelantar, entra en Asignaturas.</div>`;
+ if(p.sp)return h+`<div class="note">${p.sp.lbl}: hoy vas a por Inglés hasta donde llegues.</div>`+subBlock(p.sp.solo,'Todo el día');
+ if(p.pend)return h+viewViernes();
+ return h+subBlock(p.subs[0],'Primera hora · fuerte')+subBlock(p.subs[1],'Segunda hora · ligera');}
+
+function viewViernes(){
+ const atras=[];SUBJECTS.forEach(s=>{const st=stat(s);if(st.late.length)atras.push([s,st]);});
+ atras.sort((a,b)=>b[1].late.length-a[1].late.length);
+ const ap=SUBJECTS.map(s=>[s,unitsReady(s)]).filter(x=>x[1].length).sort((a,b)=>b[1].length-a[1].length);
+ let h=`<div class="note"><b>Viernes, día extra.</b> Primero lo atrasado. Después, apuntes de las unidades que ya has cerrado.</div>`;
+ if(!atras.length)h+=`<div class="sb dia"><p class="allok">Nada atrasado. Todo el viernes es para apuntes.</p></div>`;
+ atras.forEach(([s,st])=>{h+=`<div class="sb ${st.k}"><div class="sb-h"><div><span class="sb-slot">Ponerse al día</span><h2>${esc(s.n)}</h2></div>${pill(st)}</div>
+  ${st.late.map(i=>row(i)).join('')}</div>`;});
+ if(!ap.length)h+=`<div class="sb dia"><p class="allok">Aún no has cerrado ninguna unidad entera. Los apuntes aparecerán aquí en cuanto termines una (temario, recursos y autoevaluación).</p></div>`;
+ ap.forEach(([s,us])=>{h+=`<div class="sb ade"><div class="sb-h"><div><span class="sb-slot">Apuntes · ${us.length} unidad${us.length>1?'es':''} lista${us.length>1?'s':''}</span><h2>${esc(s.n)}</h2></div></div>
+  ${us.map(u=>`<label class="tk"><input type="checkbox" data-note="${s.c}|${u}"><span class="tk-b"></span>
+   <span class="tk-c"><span class="tk-t">Apuntes · Unidad ${u} — ${esc(s.u[u][0])}</span>
+   <span class="tk-m">Unidad cerrada · toca resumirla</span></span></label>`).join('')}</div>`;});
+ return h;}
+
+/* ===== racha en la cabecera ===== */
+function streakBar(){
+ const st=streak(),fz=frzWeek(TKEY),can=fz<2&&!FRZ.has(TKEY)&&isLect(TKEY);
+ return `<div class="urg4"><div class="fire"><b>\u{1F525} ${st}</b><span>días de racha</span></div>
+  <div class="frz"><span>Congeladores: ${2-fz} de 2 esta semana</span>
+  ${can?`<button class="fz" id="frzbtn">Usar congelador hoy</button>`:''}</div></div>`;}
+
+/* ===== historial ===== */
+function viewLog(){
+ return `<div class="head"><h1>Caja negra</h1><p>Todo lo que has hecho, con fecha y hora. Copia y pega donde quieras.</p></div>
+ <div class="blk"><div class="btns"><button id="cpy">Copiar todo</button></div>
+ <textarea id="logbox" class="logbox" readonly>${esc(LOG.slice().reverse().join('\n'))||'Aún no hay movimientos.'}</textarea></div>`;}
+
+VIEWS.historial=viewLog;TABS.push(['historial','Historial']);
+
+/* ===== eventos ===== */
+const baseRender=render;
+render=function(){baseRender();
+ app.querySelectorAll('input[data-id]').forEach(cb=>cb.onchange=()=>{
+  const it=ITEMS.find(x=>x.id===cb.dataset.id);
+  if(cb.checked){DONE.add(cb.dataset.id);log('\u2713 '+BY[it.c].ab+' U'+it.u+' — '+it.txt);}
+  else{DONE.delete(cb.dataset.id);log('\u2717 deshecho: '+BY[it.c].ab+' U'+it.u+' — '+it.txt);}
+  save();render();});
+ app.querySelectorAll('input[data-note]').forEach(cb=>cb.onchange=()=>{
+  const[c,u]=cb.dataset.note.split('|');
+  if(cb.checked){NOTES.add(cb.dataset.note);log('\u{1F4DD} Apuntes '+BY[c].ab+' U'+u);}
+  else{NOTES.delete(cb.dataset.note);log('\u2717 apuntes deshechos '+BY[c].ab+' U'+u);}
+  save4();render();});
+ app.querySelectorAll('[data-aev]').forEach(b=>b.onclick=()=>{
+  const k=b.dataset.k,[c,u]=k.split('|');AEV[k]=AEV[k]||[];
+  if(b.dataset.aev==='inc'){
+   const g=app.querySelector('[data-g="'+k+'"]');
+   AEV[k].push({d:stamp(),n:g?g.value.trim():'',f:b.dataset.f||''});
+   log('\u{1F4CA} Autoevaluación '+BY[c].ab+' U'+u+' — intento '+AEV[k].length+(g&&g.value?' · nota '+g.value:''));
+  }else if(AEV[k].length){const x=AEV[k].pop();log('\u2717 intento borrado '+BY[c].ab+' U'+u);}
+  save4();render();});
+ app.querySelectorAll('[data-dif]').forEach(b=>b.onclick=()=>{
+  const k=b.dataset.k,[c,u]=k.split('|');AEV[k]=AEV[k]||[];
+  if(!AEV[k].length){const g=app.querySelector('[data-g="'+k+'"]');AEV[k].push({d:stamp(),n:g?g.value.trim():'',f:b.dataset.dif});}
+  else AEV[k][AEV[k].length-1].f=b.dataset.dif;
+  log('\u{1F3AF} Dificultad '+BY[c].ab+' U'+u+' — '+DIF[b.dataset.dif]);save4();render();});
+ const fb=document.getElementById('frzbtn');
+ if(fb)fb.onclick=()=>{if(confirm('Usas un congelador hoy. La racha se mantiene y el resto de la semana se corre un día.')){
+  FRZ.add(TKEY);log('\u{1F9CA} Congelador usado');save4();render();}};
+ const cp=document.getElementById('cpy');
+ if(cp)cp.onclick=()=>{const t=document.getElementById('logbox');t.select();try{document.execCommand('copy');cp.textContent='Copiado';}catch(e){}};
+}
+
+const css4=document.createElement('style');
+css4.textContent=`
+#app .urg4{display:flex;justify-content:space-between;align-items:center;gap:12px;background:#13263A;color:#fff;border-radius:4px;padding:12px 14px;margin-bottom:12px;flex-wrap:wrap;}
+#app .fire b{font-size:24px;font-weight:700;display:block;line-height:1.1;}
+#app .fire span,#app .frz span{font-size:11.5px;opacity:.8;}
+#app .frz{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+#app .fz{font:inherit;font-size:12px;padding:6px 11px;border:1px solid rgba(255,255,255,.5);background:none;color:#fff;border-radius:3px;cursor:pointer;}
+#app .aev{display:block;margin:2px 0 8px 26px;}
+#app .aev-r{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+#app .stp{font:inherit;font-size:14px;width:26px;height:26px;border:1px solid var(--line);background:var(--surf);border-radius:3px;cursor:pointer;}
+#app .aev-n{font-size:11.5px;color:var(--ink2);min-width:64px;}
+#app .aev-g{font:inherit;font-size:12px;width:62px;padding:4px 6px;border:1px solid var(--line);border-radius:3px;}
+#app .dif{font-size:15px;border:0;background:none;cursor:pointer;padding:0 1px;line-height:1;}
+#app .aev-l{font-size:11px;color:var(--ink2);margin-top:5px;}
+#app .logbox{width:100%;min-height:340px;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;padding:10px;border:1px solid var(--line);border-radius:3px;background:var(--paper);}
+`;document.head.appendChild(css4);
+
+/* ===== v5: subcarpetas por categoria, estado abierto persistente, estilo brutalista ===== */
+const OPEN=new Set();
+const CATORD=['T','VC','VE','CI','LAB','SIM','AR','E360','IN','EJ','D','VOC','S','A'];
+const CATN={T:'Temario',VC:'Vídeo clases',VE:'Vídeos explicativos',CI:'Clases interactivas',LAB:'Laboratorio',SIM:'Simuladores',AR:'Realidad aumentada',E360:'Entornos 360',IN:'Infografías',EJ:'Ejercicios',D:'Destrezas',VOC:'Vocabulario',S:'Síntesis',A:'Autoevaluación'};
+function det(k,cls,head,body){return `<details class="${cls}" data-o="${k}"${OPEN.has(k)?' open':''}><summary>${head}</summary>${body}</details>`;}
+
+viewAsig=function(){
+ let h=`<div class="head"><h1>Asignaturas</h1><p>Abierto por categorías. Marca lo que hagas: el desplegable se queda donde está.</p></div>`;
+ const ord=SUBJECTS.slice().sort((a,b)=>{const r={mal:0,det:1,dia:2,ade:3};return r[stat(a).k]-r[stat(b).k];});
+ ord.forEach(sub=>{const s=stat(sub);
+  let ub='';
+  Object.keys(sub.u).forEach(un=>{
+   const its=sub.items.filter(x=>x.u==un),dn=its.filter(x=>DONE.has(x.id)).length;
+   let cb='';
+   CATORD.forEach(ty=>{const ci=its.filter(x=>x.type===ty);if(!ci.length)return;
+    const cd=ci.filter(x=>DONE.has(x.id)).length;
+    cb+=det('c:'+sub.c+'|'+un+'|'+ty,'cat'+(cd===ci.length?' full':''),
+     `<span class="cat-n">${CATN[ty]}</span><span class="cat-c">${cd}/${ci.length}</span>`,
+     `<div class="cat-b">${ci.map(i=>row(i)).join('')}</div>`);});
+   ub+=det('u:'+sub.c+'|'+un,'unit2'+(dn===its.length?' full':''),
+    `<span class="u-n">Unidad ${un} · ${esc(sub.u[un][0])}</span><span class="u-c">${dn}/${its.length}</span>`,cb);});
+  h+=det('s:'+sub.c,'sub '+s.k,
+   `<span class="sub-n">${esc(sub.n)}</span>${pill(s)}<span class="sub-p"><span class="prog"><span class="pbar ${s.k}" style="width:${s.pct}%"></span><i style="left:${Math.round(100*s.exp/s.tot)}%"></i></span>${s.pct}%</span>`,
+   `<div class="ubox">${ub}</div>`);});
+ return h;};
+VIEWS.asignaturas=viewAsig;
+
+const rb5=render;
+render=function(){const y=window.scrollY;rb5();
+ app.querySelectorAll('[data-o]').forEach(el=>el.addEventListener('toggle',()=>{el.open?OPEN.add(el.dataset.o):OPEN.delete(el.dataset.o);}));
+ window.scrollTo(0,y);};
+
+const c5=document.createElement('style');
+c5.textContent=`
+#app{--tl:#00C2CB;--mg:#FF2ED2;--yl:#FFD400;}
+#app .tabs{border-bottom:3px solid #000;gap:6px;padding-bottom:0;}
+#app .tabs button{border:3px solid #000;border-bottom:0;background:#fff;color:#000;font-weight:800;text-transform:uppercase;letter-spacing:.03em;font-size:12.5px;padding:10px 13px;border-radius:0;box-shadow:3px 0 0 rgba(0,0,0,.14);}
+#app .tabs button.on{background:var(--tl);color:#000;}
+#app .top{border-bottom:0;}
+#app .brand{font-weight:800;text-transform:uppercase;font-size:11.5px;letter-spacing:.04em;color:#000;}
+#app .mark{border-radius:0;background:var(--mg);box-shadow:none;border:2px solid #000;}
+#app .gp{border:2px solid #000;padding:2px 8px;font-weight:700;background:var(--yl);color:#000;}
+#app .urg4{border:3px solid #000;border-radius:0;box-shadow:6px 6px 0 var(--mg);}
+#app .fz{border:2px solid #fff;font-weight:700;text-transform:uppercase;border-radius:0;}
+#app .u{border:3px solid #000;border-radius:0;box-shadow:4px 4px 0 rgba(0,0,0,.15);}
+#app .u.hot{box-shadow:4px 4px 0 var(--mg);background:#fff;}
+#app .day{border:2px solid #000;border-radius:0;}
+#app .day.sel{background:var(--tl);border-color:#000;box-shadow:3px 3px 0 #000;}
+#app .day.sel .day-l,#app .day.sel .day-n,#app .day.sel .day-t{color:#000;}
+#app .day.today{border-width:3px;}
+#app .day.pend{background:var(--yl);}
+#app .nav{border:2px solid #000;border-radius:0;font-weight:800;color:#000;}
+#app .badge{border-radius:0;border:2px solid #000;background:var(--yl);color:#000;font-weight:800;text-transform:uppercase;}
+#app .pill{border-radius:0;border:2px solid #000;font-weight:700;text-transform:uppercase;font-size:10.5px;letter-spacing:.02em;}
+#app .pill.ade{background:var(--mg);color:#000;}
+#app .pill.dia{background:var(--tl);color:#000;}
+#app .pill.det{background:var(--yl);color:#000;}
+#app .pill.mal{background:#000;color:#fff;}
+#app .sb{border:3px solid #000;border-left-width:10px;border-radius:0;box-shadow:5px 5px 0 rgba(0,0,0,.13);}
+#app .sb.mal{box-shadow:5px 5px 0 var(--mg);}
+#app .sb-slot{text-transform:uppercase;font-weight:800;font-size:10px;letter-spacing:.06em;}
+#app .first{border:3px solid #000;border-radius:0;background:var(--yl);}
+#app .first-k{text-transform:uppercase;font-weight:800;letter-spacing:.05em;color:#000;}
+#app .first-t{font-weight:800;}
+#app .prog{border:2px solid #000;border-radius:0;height:12px;background:#fff;}
+#app .prog .pbar{border-radius:0;}
+#app .prog i{background:#000;width:3px;height:16px;top:-4px;}
+#app .tk-b{border:2px solid #000;border-radius:0;}
+#app .tk.on .tk-b{background:var(--tl);border-color:#000;}
+#app .tk.on .tk-b::after{border-color:#000;}
+#app .note{border:3px solid #000;border-radius:0;background:var(--yl);}
+#app .sub{border:3px solid #000;border-left-width:10px;border-radius:0;}
+#app .sub summary,#app .unit2 summary,#app .cat summary{cursor:pointer;list-style:none;}
+#app .sub summary::-webkit-details-marker,#app .unit2 summary::-webkit-details-marker,#app .cat summary::-webkit-details-marker{display:none;}
+#app .ubox{border-top:3px solid #000;padding:10px;display:flex;flex-direction:column;gap:8px;}
+#app .unit2{border:2px solid #000;background:#fff;}
+#app .unit2>summary{display:flex;justify-content:space-between;gap:10px;padding:9px 11px;font-size:13.5px;font-weight:700;}
+#app .unit2>summary::before{content:"\\25B8";margin-right:6px;font-size:11px;}
+#app .unit2[open]>summary::before{content:"\\25BE";}
+#app .unit2.full>summary{background:var(--tl);}
+#app .u-c,#app .cat-c{font-size:11.5px;font-weight:700;border:2px solid #000;padding:0 6px;background:#fff;}
+#app .cat{border:2px solid #000;margin:8px 10px 0;background:#fff;}
+#app .cat:last-child{margin-bottom:10px;}
+#app .cat>summary{display:flex;justify-content:space-between;gap:10px;padding:7px 10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;background:#F2F2F2;}
+#app .cat.full>summary{background:var(--mg);color:#000;}
+#app .cat-b{padding:4px 11px 9px;}
+#app .btns button,#app .stp{border:2px solid #000;border-radius:0;font-weight:700;}
+#app .btns button:first-child{background:var(--tl);color:#000;}
+#app .btns button:nth-child(2){background:#fff;color:#000;}
+#app .btns button.danger{background:var(--mg);color:#000;border-color:#000;}
+#app .aev-g{border:2px solid #000;border-radius:0;}
+#app .cw{border:2px solid #000;border-radius:0;}
+#app .cw.now{box-shadow:inset 6px 0 0 var(--tl);}
+#app .cw.hot{box-shadow:inset 6px 0 0 var(--mg);}
+#app .blk{border:3px solid #000;border-radius:0;}
+#app .head h1,#app .dayhead h1{text-transform:uppercase;letter-spacing:-.01em;}
+`;document.head.appendChild(c5);
+
+
+/* ===== v6: popup de autoevaluacion ===== */
+let MODAL=null;
+function drawModal(){
+ let el=document.getElementById('mdl');
+ if(!el){el=document.createElement('div');el.id='mdl';document.body.appendChild(el);}
+ if(!MODAL){el.style.display='none';el.innerHTML='';return;}
+ const ar=AEV[MODAL.k]||[];
+ el.style.display='flex';
+ el.innerHTML=`<div class="mb"><div class="mb-h">Autoevaluación</div>
+  <div class="mb-t">${esc(BY[MODAL.c].ab)} · Unidad ${MODAL.u}</div>
+  <div class="mb-s">Intento nº ${ar.length+1}${ar.length?' · anteriores: '+ar.map(a=>(a.n||'—')+(DIF[a.f]||'')).join(', '):''}</div>
+  <label class="mb-l">Nota obtenida</label><input id="mnota" class="mb-i" inputmode="decimal" placeholder="Ej. 8,5">
+  <label class="mb-l">¿Cómo se te dio?</label>
+  <div class="mb-d">${Object.keys(DIF).map(x=>`<button class="mdif${MODAL.f===x?' on':''}" data-md="${x}">${DIF[x]}</button>`).join('')}</div>
+  <div class="mb-a"><button id="mskip" class="mb-x">Saltar</button><button id="msave" class="mb-ok">Guardar intento</button></div></div>`;
+ el.querySelectorAll('[data-md]').forEach(b=>b.onclick=()=>{MODAL.f=b.dataset.md;const v=el.querySelector('#mnota').value;drawModal();el.querySelector('#mnota').value=v;});
+ el.querySelector('#mskip').onclick=()=>{MODAL=null;drawModal();};
+ el.querySelector('#msave').onclick=()=>{
+  const n=el.querySelector('#mnota').value.trim();
+  AEV[MODAL.k]=AEV[MODAL.k]||[];AEV[MODAL.k].push({d:stamp(),n:n,f:MODAL.f});
+  log('\u{1F4CA} Autoevaluación '+BY[MODAL.c].ab+' U'+MODAL.u+' — intento '+AEV[MODAL.k].length+(n?' · nota '+n:'')+(MODAL.f?' · '+DIF[MODAL.f]:''));
+  MODAL=null;save4();render();drawModal();};
+ const i=el.querySelector('#mnota');if(i)i.focus();}
+const rb6=render;
+render=function(){rb6();
+ app.querySelectorAll('input[data-id]').forEach(cb=>{
+  const it=ITEMS.find(x=>x.id===cb.dataset.id);
+  if(!it||it.type!=='A')return;
+  cb.onchange=()=>{
+   if(cb.checked){DONE.add(it.id);log('\u2713 '+BY[it.c].ab+' U'+it.u+' — '+it.txt);save();render();MODAL={k:aevKey(it),c:it.c,u:it.u,f:''};drawModal();}
+   else{DONE.delete(it.id);log('\u2717 deshecho: '+BY[it.c].ab+' U'+it.u+' — '+it.txt);save();render();}};});};
+const c6=document.createElement('style');
+c6.textContent=`
+#mdl{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;align-items:center;justify-content:center;padding:20px;
+ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;}
+#mdl .mb{background:#fff;border:4px solid #000;box-shadow:10px 10px 0 #FF2ED2;max-width:360px;width:100%;padding:20px;}
+#mdl .mb-h{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;background:#00C2CB;border:2px solid #000;display:inline-block;padding:2px 8px;}
+#mdl .mb-t{font-size:20px;font-weight:800;margin:10px 0 2px;line-height:1.15;}
+#mdl .mb-s{font-size:12px;color:#546A82;margin-bottom:14px;}
+#mdl .mb-l{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin:10px 0 4px;}
+#mdl .mb-i{width:100%;font:inherit;font-size:18px;font-weight:700;padding:9px 10px;border:3px solid #000;}
+#mdl .mb-d{display:flex;gap:8px;}
+#mdl .mdif{font-size:26px;line-height:1;background:#fff;border:3px solid #000;padding:6px 12px;cursor:pointer;}
+#mdl .mdif.on{background:#FFD400;box-shadow:4px 4px 0 #000;}
+#mdl .mb-a{display:flex;gap:8px;margin-top:18px;}
+#mdl .mb-a button{flex:1;font:inherit;font-size:13px;font-weight:800;text-transform:uppercase;padding:11px;border:3px solid #000;cursor:pointer;}
+#mdl .mb-x{background:#fff;}
+#mdl .mb-ok{background:#00C2CB;box-shadow:4px 4px 0 #000;}
+`;document.head.appendChild(c6);
+
+
+/* ===== v7: fecha real, racha reconstruida desde el historial, recarga al cambiar de dia ===== */
+function realKey(){const t=new Date();t.setHours(12,0,0,0);return key(t);}
+function log(s){LOG.push(stamp()+'  '+s);STUD.add(realKey());save4();}
+function rebuildStud(){let n=0;LOG.forEach(l=>{const m=l.match(/^(\d{4}-\d{2}-\d{2}) /);
+ if(m&&(l.indexOf('\u2713')>0||l.indexOf('\u{1F4CA}')>0||l.indexOf('\u{1F4DD}')>0||l.indexOf('\u{1F9CA}')>0)){if(!STUD.has(m[1]))n++;STUD.add(m[1]);}});return n;}
+const l40=load4;
+load4=async function(){await l40();const n=rebuildStud();
+ if(n){LOG.push(stamp()+'  \u{1F527} Racha reconstruida desde el historial: '+n+' día(s) recuperados');}
+ await save4();};
+function dayGuard(){if(realKey()!==TKEY){location.reload();return true;}return false;}
+const rb7=render;
+render=function(){rb7();
+ app.querySelectorAll('input[data-id],input[data-note]').forEach(cb=>{const o=cb.onchange;cb.onchange=e=>{if(dayGuard())return;o&&o(e);};});};
+setInterval(dayGuard,60000);
+
+
+/* ===== v8: centrado y margenes ===== */
+const c8=document.createElement('style');
+c8.textContent=`
+#app .shell{max-width:1060px;margin:0 auto!important;padding:0 44px 90px!important;}
+#app .urg{gap:12px;}
+@media (max-width:900px){#app .shell{padding:0 22px 70px!important;}}
+@media (max-width:560px){#app .shell{padding:0 14px 60px!important;}}
+`;document.head.appendChild(c8);
+
+
+/* ===== v9: tolerancia de racha + clases en directo ===== */
+function streakInfo(){
+ let n=0,gap=0,lastGap=0,t=new Date(TODAY),started=false;
+ if(!STUD.has(TKEY)&&!FRZ.has(TKEY))t=addD(t,-1);
+ for(let g=0;g<400;g++){const k=key(t);
+  if(k<'2026-09-15')break;
+  if(!isLect(k)&&!FRZ.has(k)){t=addD(t,-1);continue;}
+  if(STUD.has(k)||FRZ.has(k)){n++;if(!started){lastGap=gap;started=true;}gap=0;t=addD(t,-1);}
+  else{gap++;if(gap>2)break;t=addD(t,-1);}}
+ return {n:n,gap:started?lastGap:gap};}
+function streak(){return streakInfo().n;}
+function streakBar(){
+ const si=streakInfo(),st=si.n,fz=frzWeek(TKEY),can=fz<2&&!FRZ.has(TKEY)&&isLect(TKEY);
+ const hoy=STUD.has(TKEY)||FRZ.has(TKEY),marg=2-si.gap;
+ let m;
+ if(hoy)m='Hoy ya cuenta. Margen completo: 2 días.';
+ else if(si.gap===0)m='Te quedan 2 días de margen sin perderla.';
+ else if(marg>0)m=si.gap+' día'+(si.gap>1?'s':'')+' sin marcar · te queda '+marg+' día'+(marg>1?'s':'')+' de margen';
+ else m='Último día: si hoy no marcas nada, la racha vuelve a 0.';
+ return `<div class="urg4"><div class="fire"><b>\u{1F525} ${st}</b><span>días de racha</span></div>
+  <div class="frz"><span class="${marg<=0&&!hoy?'rojo':''}">${m}</span><span>Congeladores: ${2-fz} de 2</span>
+  ${can?`<button class="fz" id="frzbtn">Congelar hoy</button>`:''}</div></div>`;}
+
+/* ===== clases en directo ===== */
+let LIVE=[];const K9='universae-arbi-live';
+async function load9(){try{if(window.storage){const r=await window.storage.get(K9,false);if(r&&r.value){LIVE=JSON.parse(r.value);return;}}}catch(e){}
+ try{const v=localStorage.getItem(K9);if(v)LIVE=JSON.parse(v);}catch(e){}}
+async function save9(){const a=JSON.stringify(LIVE);
+ try{if(window.storage){await window.storage.set(K9,a,false);}}catch(e){}
+ try{localStorage.setItem(K9,a);}catch(e){}}
+function fdate(s){const t=d(s);return DAYNAME[t.getDay()]+' '+t.getDate()+' '+MES[t.getMonth()]+' '+t.getFullYear();}
+function viewLive(){
+ const ord=LIVE.slice().sort((a,b)=>b.f.localeCompare(a.f));
+ let h=`<div class="head"><h1>Clases en directo</h1><p>Apunta cada directo al que asistas: de qué asignatura, cuándo y qué se tocó. Queda guardado y registrado en la caja negra.</p></div>
+ <div class="blk"><h2>Añadir clase</h2>
+  <label class="lv-l">Asignatura</label>
+  <select id="lvc" class="lv-i">${SUBJECTS.map(s=>`<option value="${s.c}">${esc(s.n)}</option>`).join('')}</select>
+  <label class="lv-l">Fecha</label><input type="date" id="lvd" class="lv-i" value="${TKEY}">
+  <label class="lv-l">Temas que se tocaron</label>
+  <textarea id="lvt" class="lv-t" placeholder="Ej. Repaso de Karnaugh, ejercicios de tabla de verdad, dudas del examen"></textarea>
+  <label class="lv-l">Notas sueltas (opcional)</label>
+  <textarea id="lvn" class="lv-t" placeholder="Lo que dijo el profe, avisos, fechas..."></textarea>
+  <div class="btns"><button id="lvadd">Guardar clase</button></div></div>`;
+ if(!ord.length)return h+`<div class="blk"><p class="empty">Todavía no has registrado ningún directo.</p></div>`;
+ const by={};ord.forEach(x=>{(by[x.c]=by[x.c]||[]).push(x);});
+ h+=`<div class="head" style="margin-top:26px"><h1 style="font-size:19px">Registradas · ${ord.length}</h1></div>`;
+ SUBJECTS.forEach(s=>{const l=by[s.c];if(!l)return;
+  h+=`<div class="sb dia"><div class="sb-h"><div><span class="sb-slot">${l.length} clase${l.length>1?'s':''}</span><h2>${esc(s.n)}</h2></div></div>
+   ${l.map(x=>`<div class="lvc"><div class="lvc-h"><b>${fdate(x.f)}</b><button class="lvdel" data-del="${x.id}">Borrar</button></div>
+    <div class="lvc-t">${esc(x.t)}</div>${x.nt?`<div class="lvc-n">${esc(x.nt)}</div>`:''}</div>`).join('')}</div>`;});
+ return h;}
+VIEWS.directos=viewLive;TABS.splice(4,0,['directos','Directos']);
+
+const rb9=render;
+render=function(){rb9();
+ const a=document.getElementById('lvadd');
+ if(a)a.onclick=()=>{
+  const c=document.getElementById('lvc').value,f=document.getElementById('lvd').value,
+   t=document.getElementById('lvt').value.trim(),nt=document.getElementById('lvn').value.trim();
+  if(!f||!t){alert('Pon al menos la fecha y los temas que se tocaron.');return;}
+  LIVE.push({id:'L'+Date.now(),c:c,f:f,t:t,nt:nt});
+  log('\u{1F3A5} Clase en directo · '+BY[c].ab+' · '+f+' — '+t.replace(/\n/g,' / '));
+  save9();render();};
+ app.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
+  const x=LIVE.find(y=>y.id===b.dataset.del);
+  if(x&&confirm('¿Borrar esta clase en directo?')){LIVE=LIVE.filter(y=>y.id!==b.dataset.del);
+   log('✗ Clase en directo borrada · '+BY[x.c].ab+' · '+x.f);save9();render();}});};
+
+const c9=document.createElement('style');
+c9.textContent=`
+#app .frz{flex-direction:column;align-items:flex-end;gap:2px;}
+#app .frz .rojo{color:#FFD400;font-weight:700;}
+#app .fz{margin-top:6px;}
+#app .lv-l{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin:12px 0 4px;}
+#app .lv-i,#app .lv-t{width:100%;font:inherit;font-size:14px;padding:9px 10px;border:3px solid #000;background:#fff;border-radius:0;}
+#app .lv-t{min-height:62px;resize:vertical;}
+#app .lvc{border-top:2px solid var(--line);padding:10px 0;}
+#app .lvc-h{display:flex;justify-content:space-between;align-items:center;font-size:13px;}
+#app .lvdel{font:inherit;font-size:10.5px;font-weight:700;text-transform:uppercase;border:2px solid #000;background:#fff;padding:2px 7px;cursor:pointer;}
+#app .lvc-t{font-size:14px;margin-top:5px;white-space:pre-wrap;}
+#app .lvc-n{font-size:12.5px;color:var(--ink2);margin-top:4px;white-space:pre-wrap;border-left:3px solid var(--line);padding-left:9px;}
+`;document.head.appendChild(c9);
+
+
+/* ===== v10: semilla de historial y reconstruccion ===== */
+const SEED=[];
+function mergeSeed(){
+ const have=new Set(LOG);let add=0;
+ SEED.forEach(l=>{if(!have.has(l)){LOG.push(l);have.add(l);add++;}});
+ LOG.sort((a,b)=>a.localeCompare(b));
+ const IX={};ITEMS.forEach(i=>{IX[BY[i.c].ab+'|'+i.u+'|'+i.txt]=i.id;});
+ let rd=0,rn=0;
+ LOG.forEach(l=>{
+  let m=l.match(/\u2713 (.+?) U(\d+) \u2014 (.+)$/);
+  if(m){const id=IX[m[1]+'|'+m[2]+'|'+m[3]];if(id&&!DONE.has(id)){DONE.add(id);rd++;}return;}
+  m=l.match(/\u{1F4DD} Apuntes (.+?) U(\d+)$/u);
+  if(m){const s=SUBJECTS.find(x=>x.ab===m[1]);if(s){const k=s.c+'|'+m[2];if(!NOTES.has(k)){NOTES.add(k);rn++;}}}});
+ if(!Object.keys(AEV).length){
+  LOG.forEach(l=>{const m=l.match(/\u{1F4CA} Autoevaluaci\u00f3n (.+?) U(\d+) \u2014 intento (\d+)(?: \u00b7 nota (.+?))?(?:\s* \u00b7 (.))?\s*$/u);
+   if(!m)return;const s=SUBJECTS.find(x=>x.ab===m[1]);if(!s)return;
+   const k=s.c+'|'+m[2];AEV[k]=AEV[k]||[];
+   const n=+m[3],nt=m[4]?m[4].trim():'',df=m[5]?(Object.keys(DIF).find(x=>DIF[x]===m[5])||''):'';
+   while(AEV[k].length<n-1)AEV[k].push({d:l.slice(0,16),n:'',f:''});
+   if(AEV[k].length>=n){if(nt)AEV[k][n-1].n=nt;if(df)AEV[k][n-1].f=df;return;}
+   AEV[k].push({d:l.slice(0,16),n:nt,f:df});});}
+ return {add:add,rd:rd,rn:rn};}
+const l4b=load4;
+load4=async function(){await l4b();const r=mergeSeed();rebuildStud();
+ if(r.add||r.rd)LOG.push(stamp()+'  \u{1F527} Historial importado: '+r.add+' línea(s), '+r.rd+' tarea(s) y '+r.rn+' apunte(s) restaurados');
+ LOG.sort((a,b)=>a.localeCompare(b));await save4();await save();};
+
+Promise.all([load(),load4(),load9()]).then(render);
+</script>
+
+</body></html>
