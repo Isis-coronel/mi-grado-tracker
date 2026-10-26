@@ -159,6 +159,17 @@ final class GradeStore: ObservableObject {
             return end < today
         })?.n ?? 1
     }
+    func courseWeek(containing date: Date) -> CourseWeek? {
+        let day = Calendar.current.startOfDay(for: date)
+        if let match = course.weeks.first(where: { week in
+            guard let start = date(from: week.s), let end = date(from: week.e) else { return false }
+            return day >= start && day <= end
+        }) { return match }
+        return course.weeks.last(where: { week in
+            guard let end = date(from: week.e) else { return false }
+            return end < day
+        })
+    }
     var referenceWeek: Int {
         let today = Calendar.current.startOfDay(for: Date())
         if let activeWeek = course.weeks.first(where: { week in
@@ -176,7 +187,7 @@ final class GradeStore: ObservableObject {
     var currentStreak: Int { streakLength(from: Date()) }
     var didStudyToday: Bool { studyDays.contains(dateKey(for: Date())) }
     var bestStreak: Int {
-        let dates = studyDays.compactMap { date(from: $0) }.sorted()
+        let dates = studyDays.compactMap { date(from: $0) }.filter(isLective).sorted()
         guard !dates.isEmpty else { return 0 }
         var best = 1
         var current = 1
@@ -319,16 +330,22 @@ final class GradeStore: ObservableObject {
 
     var catchUpAssignments: [DailyAssignment] {
         course.subjects
-            .compactMap { subject -> (CourseSubject, CourseTask)? in
-                guard let task = nextTask(for: subject, throughWeek: currentCourseWeek) else { return nil }
-                return (subject, task)
+            .compactMap { subject -> (CourseSubject, Int)? in
+                let count = overdueTasks(for: subject).count
+                return count > 0 ? (subject, count) : nil
             }
             .sorted { lhs, rhs in
-                if lhs.1.week != rhs.1.week { return lhs.1.week < rhs.1.week }
+                if lhs.1 != rhs.1 { return lhs.1 > rhs.1 }
                 return lhs.0.name < rhs.0.name
             }
-            .prefix(2)
-            .map { DailyAssignment(period: "Pendiente prioritario", subjectCode: $0.0.code) }
+            .map { DailyAssignment(period: "\($0.1) tareas atrasadas", subjectCode: $0.0.code) }
+    }
+
+    func overdueTasks(for subject: CourseSubject) -> [CourseTask] {
+        subject.tasks.filter { task in
+            guard !isComplete(task), let week = course.weeks.first(where: { $0.n == task.week }), let end = date(from: week.e) else { return false }
+            return Calendar.current.startOfDay(for: Date()) > end
+        }
     }
 
     func assignments(for date: Date) -> [DailyAssignment] {
@@ -396,7 +413,7 @@ final class GradeStore: ObservableObject {
         var length = 0
         var missedLective = 0
         while true {
-            if studyDays.contains(dateKey(for: day)) { length += 1; missedLective = 0 }
+            if isLective(day) && studyDays.contains(dateKey(for: day)) { length += 1; missedLective = 0 }
             else if isFrozen(day) { }
             else if isLective(day) { missedLective += 1; if missedLective > 2 { break } }
             guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else { break }
@@ -614,7 +631,7 @@ struct TodayView: View {
         return "\(value.prefix(1).uppercased())\(value.dropFirst())"
     }
     private var courseWeekTitle: String {
-        guard let week = store.course.weeks.first(where: { $0.n == store.currentCourseWeek }) else {
+        guard let week = store.courseWeek(containing: selectedDate) else {
             return "Semana del curso"
         }
         return "Semana \(week.n) de \(store.course.weeks.count) · \(week.l)"
@@ -628,7 +645,7 @@ struct TodayView: View {
     }
     private var dailyDescription: String {
         if dateKey(selectedDate) < "2026-09-16" { return Calendar.current.isDate(selectedDate, inSameDayAs: dateForISO("2026-09-15")) ? "Día dedicado a Inglés antes de comenzar la rotación semanal." : "La rotación del curso empieza el 16 de septiembre." }
-        if isFriday { return "Viernes de repaso: aquí aparecen los dos pendientes más antiguos." }
+        if isFriday { return "Viernes de repaso: aparecen primero las asignaturas con más tareas vencidas." }
         if store.isFrozen(selectedDate) { return "La racha queda protegida y las clases restantes pasan al siguiente día." }
         if isWeekend { return "Hoy no hay asignaturas programadas en tu plan. Descansa." }
         return "Abre el recurso indicado en UNIVERSAE: primero la primera hora y después la segunda. Al marcar una tarea, aparecerá la siguiente."
@@ -835,7 +852,11 @@ struct DailyAssignmentCard: View {
 
             Divider()
 
-            if let nextTask {
+            if assignment.period.contains("atrasadas") {
+                Label("PENDIENTES PARA RECUPERAR", systemImage: "exclamationmark.circle.fill")
+                    .font(.caption.bold()).foregroundStyle(.red)
+                ForEach(store.overdueTasks(for: subject)) { TaskRow(task: $0) }
+            } else if let nextTask {
                 Label("SIGUIENTE TAREA", systemImage: "arrow.up.right.square.fill")
                     .font(.caption.bold()).foregroundStyle(AppStyle.pink)
                 Text(nextTask.title)
