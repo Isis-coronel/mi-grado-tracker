@@ -67,8 +67,12 @@ struct CourseTask: Decodable, Identifiable {
 final class GradeStore: ObservableObject {
     @Published private(set) var course: CourseData
     @Published var completed: Set<String> = [] { didSet { save() } }
+    @Published private(set) var studyDays: Set<String> = [] {
+        didSet { UserDefaults.standard.set(Array(studyDays), forKey: studyDaysKey) }
+    }
 
     private let storageKey = "universae-arbi-v3"
+    private let studyDaysKey = "universae-arbi-study-days-v1"
 
     init() {
         if let url = Bundle.main.url(forResource: "course", withExtension: "json"),
@@ -81,17 +85,65 @@ final class GradeStore: ObservableObject {
         if let values = UserDefaults.standard.stringArray(forKey: storageKey) {
             completed = Set(values)
         }
+        studyDays = Set(UserDefaults.standard.stringArray(forKey: studyDaysKey) ?? [])
     }
 
     var totalTasks: Int { course.subjects.reduce(0) { $0 + $1.tasks.count } }
     var completedCount: Int { completed.count }
     var progress: Double { totalTasks == 0 ? 0 : Double(completedCount) / Double(totalTasks) }
+    var referenceWeek: Int {
+        let today = Calendar.current.startOfDay(for: Date())
+        if let activeWeek = course.weeks.first(where: { week in
+            guard let start = date(from: week.s), let end = date(from: week.e) else { return false }
+            return today >= start && today <= end
+        }) {
+            return max(0, activeWeek.n - 1)
+        }
+        return course.weeks.last(where: { week in
+            guard let end = date(from: week.e) else { return false }
+            return end < today
+        })?.n ?? 0
+    }
+    var expectedTaskCount: Int { expectedTaskCount(for: nil) }
+    var currentStreak: Int { streakLength(from: Date()) }
+    var didStudyToday: Bool { studyDays.contains(dateKey(for: Date())) }
+    var bestStreak: Int {
+        let dates = studyDays.compactMap { date(from: $0) }.sorted()
+        guard !dates.isEmpty else { return 0 }
+        var best = 1
+        var current = 1
+        for index in 1..<dates.count {
+            let previous = Calendar.current.startOfDay(for: dates[index - 1])
+            let expectedNext = Calendar.current.date(byAdding: .day, value: 1, to: previous)
+            if expectedNext == Calendar.current.startOfDay(for: dates[index]) {
+                current += 1
+                best = max(best, current)
+            } else {
+                current = 1
+            }
+        }
+        return best
+    }
+
+    func expectedTaskCount(for subject: CourseSubject?) -> Int {
+        let tasks = subject?.tasks ?? course.subjects.flatMap(\.tasks)
+        return tasks.filter { $0.week <= referenceWeek }.count
+    }
+
+    func standing(done: Int, expected: Int) -> ProgressStanding {
+        if done > expected { return .ahead(done - expected) }
+        if done < expected { return .behind(expected - done) }
+        return .onTrack
+    }
 
     func isComplete(_ task: CourseTask) -> Bool { completed.contains(task.id) }
 
     func toggle(_ task: CourseTask) {
         if completed.contains(task.id) { completed.remove(task.id) }
-        else { completed.insert(task.id) }
+        else {
+            completed.insert(task.id)
+            studyDays.insert(dateKey(for: Date()))
+        }
     }
 
     func completedCount(for subject: CourseSubject) -> Int {
@@ -99,17 +151,99 @@ final class GradeStore: ObservableObject {
     }
 
     func restoreProgress(from data: Data) throws {
-        let ids = try JSONDecoder().decode([String].self, from: data)
         let validIDs = Set(course.subjects.flatMap(\.tasks).map(\.id))
-        completed = Set(ids.filter { validIDs.contains($0) })
+        if let snapshot = try? JSONDecoder().decode(ProgressSnapshot.self, from: data) {
+            completed = Set(snapshot.completed.filter { validIDs.contains($0) })
+            studyDays = Set(snapshot.studyDays)
+        } else {
+            // Backward compatibility with exports created before streak history was added.
+            let ids = try JSONDecoder().decode([String].self, from: data)
+            completed = Set(ids.filter { validIDs.contains($0) })
+            studyDays = []
+        }
     }
 
     var backupDocument: ProgressBackup {
-        ProgressBackup(data: (try? JSONEncoder().encode(Array(completed).sorted())) ?? Data("[]".utf8))
+        let snapshot = ProgressSnapshot(completed: Array(completed).sorted(), studyDays: Array(studyDays).sorted())
+        return ProgressBackup(data: (try? JSONEncoder().encode(snapshot)) ?? Data("{}".utf8))
     }
 
     private func save() {
         UserDefaults.standard.set(Array(completed), forKey: storageKey)
+    }
+
+    private func streakLength(from now: Date) -> Int {
+        let calendar = Calendar.current
+        var day = calendar.startOfDay(for: now)
+        if !studyDays.contains(dateKey(for: day)) {
+            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: day),
+                  studyDays.contains(dateKey(for: yesterday)) else { return 0 }
+            day = yesterday
+        }
+
+        var length = 0
+        while studyDays.contains(dateKey(for: day)) {
+            length += 1
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else { break }
+            day = previous
+        }
+        return length
+    }
+
+    private func dateKey(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
+    }
+
+    private func date(from value: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: value).map { Calendar.current.startOfDay(for: $0) }
+    }
+}
+
+enum ProgressStanding {
+    case ahead(Int)
+    case onTrack
+    case behind(Int)
+
+    var title: String {
+        switch self {
+        case .ahead: "Por delante"
+        case .onTrack: "Al día"
+        case .behind: "Atrasada"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .ahead(let count): "\(count) tareas por delante de la temporalización"
+        case .onTrack: "Has completado lo previsto hasta ahora"
+        case .behind(let count): "Te faltan \(count) tareas para alcanzar el ritmo previsto"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .ahead: AppStyle.pink
+        case .onTrack: AppStyle.teal
+        case .behind: AppStyle.yellow
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .ahead: "arrow.up.right"
+        case .onTrack: "checkmark"
+        case .behind: "arrow.down.right"
+        }
     }
 }
 
@@ -237,9 +371,18 @@ struct TodayView: View {
                             .font(.caption.bold()).foregroundStyle(.white.opacity(0.72))
                         Text(store.progress.formatted(.percent.precision(.fractionLength(0))))
                             .font(.system(size: 38, weight: .heavy, design: .rounded)).foregroundStyle(.white)
-                        ProgressView(value: store.progress).tint(AppStyle.teal)
-                        Text("\(store.completedCount) tareas completadas · \(max(0, store.totalTasks - store.completedCount)) por hacer")
+                        ProgressComparisonBar(
+                            actual: store.progress,
+                            expected: store.totalTasks == 0 ? 0 : Double(store.expectedTaskCount) / Double(store.totalTasks),
+                            color: store.standing(done: store.completedCount, expected: store.expectedTaskCount).color
+                        )
+                        Text("\(store.completedCount) hechas · \(store.expectedTaskCount) previstas hasta la semana \(store.referenceWeek)")
                             .font(.subheadline).foregroundStyle(.white.opacity(0.78))
+                        Label(store.standing(done: store.completedCount, expected: store.expectedTaskCount).detail,
+                              systemImage: store.standing(done: store.completedCount, expected: store.expectedTaskCount).symbol)
+                            .font(.caption.bold()).foregroundStyle(.white)
+                        Text("La marca vertical indica la meta de la temporalización.")
+                            .font(.caption2).foregroundStyle(.white.opacity(0.68))
                     }
                     Spacer(minLength: 16)
                     Image(systemName: "bolt.fill")
@@ -251,6 +394,8 @@ struct TodayView: View {
                 .overlay(alignment: .bottomTrailing) {
                     Rectangle().fill(AppStyle.pink).frame(width: 9, height: 9).offset(x: 4, y: 4)
                 }
+
+                StreakCard()
 
                 HStack(spacing: 12) {
                     MetricCard(title: "Tareas hechas", value: "\(store.completedCount)", symbol: "checkmark.circle.fill", color: AppStyle.teal)
@@ -301,18 +446,85 @@ struct MetricCard: View {
     }
 }
 
+struct ProgressComparisonBar: View {
+    let actual: Double
+    let expected: Double
+    let color: Color
+
+    private func bounded(_ value: Double) -> Double { min(max(value, 0), 1) }
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule().fill(AppStyle.slate.opacity(0.25))
+                Capsule().fill(color).frame(width: geometry.size.width * bounded(actual))
+                Rectangle()
+                    .fill(AppStyle.navy)
+                    .frame(width: 3, height: 15)
+                    .offset(x: max(0, geometry.size.width * bounded(expected) - 1.5))
+            }
+        }
+        .frame(height: 15)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Progreso real \(actual.formatted(.percent.precision(.fractionLength(0)))) frente al ritmo previsto \(expected.formatted(.percent.precision(.fractionLength(0))))")
+    }
+}
+
+struct StreakCard: View {
+    @EnvironmentObject private var store: GradeStore
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 14) {
+            VStack(alignment: .leading, spacing: 7) {
+                Label("RACHA DE ESTUDIO", systemImage: "flame.fill")
+                    .font(.caption.bold()).tracking(0.5).foregroundStyle(AppStyle.yellow)
+                Text("\(store.currentStreak) \(store.currentStreak == 1 ? "día" : "días")")
+                    .font(.system(size: 30, weight: .heavy, design: .rounded)).foregroundStyle(.white)
+                Text(store.currentStreak == 0
+                     ? "Marca una tarea hoy para empezar tu racha."
+                     : "\(store.didStudyToday ? "Has estudiado hoy" : "Tu última actividad fue ayer") · Mejor racha: \(store.bestStreak) días")
+                    .font(.subheadline).foregroundStyle(.white.opacity(0.78))
+            }
+            Spacer(minLength: 8)
+            Image(systemName: "flame.fill")
+                .font(.system(size: 32, weight: .bold)).foregroundStyle(AppStyle.pink)
+                .padding(14).background(.white.opacity(0.08), in: Circle())
+                .accessibilityHidden(true)
+        }
+        .padding(18)
+        .background(AppStyle.navy, in: RoundedRectangle(cornerRadius: 5))
+        .overlay(alignment: .bottomTrailing) {
+            Rectangle().fill(AppStyle.pink).frame(width: 8, height: 8).offset(x: 4, y: 4)
+        }
+    }
+}
+
 struct SubjectCard: View {
+    @EnvironmentObject private var store: GradeStore
     let subject: CourseSubject
     let done: Int
     private var fraction: Double { subject.tasks.isEmpty ? 0 : Double(done) / Double(subject.tasks.count) }
+    private var expected: Int { store.expectedTaskCount(for: subject) }
+    private var standing: ProgressStanding { store.standing(done: done, expected: expected) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
             Text(subject.abbr.uppercased())
                 .font(.caption.bold()).tracking(0.4).foregroundStyle(AppStyle.slate)
             Text(subject.name).font(.headline.bold()).foregroundStyle(AppStyle.navy).multilineTextAlignment(.leading).lineLimit(3)
-            ProgressView(value: fraction).tint(AppStyle.pink)
-            Text("\(done) de \(subject.tasks.count) tareas")
+            ProgressComparisonBar(
+                actual: fraction,
+                expected: subject.tasks.isEmpty ? 0 : Double(expected) / Double(subject.tasks.count),
+                color: standing.color
+            )
+            HStack(spacing: 5) {
+                Image(systemName: standing.symbol)
+                Text(standing.title)
+                Spacer(minLength: 0)
+                Text("\(done)/\(subject.tasks.count)").monospacedDigit()
+            }
+            .font(.caption.bold()).foregroundStyle(standing.color == AppStyle.yellow ? AppStyle.navy : standing.color)
+            Text("\(expected) previstas hasta la semana \(store.referenceWeek)")
                 .font(.caption).foregroundStyle(AppStyle.slate)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -325,11 +537,41 @@ struct SubjectCard: View {
 
 struct SubjectsView: View {
     @EnvironmentObject private var store: GradeStore
+    @State private var expandedSubjects: Set<String> = []
+
     var body: some View {
-        List(store.course.subjects) { subject in
-            NavigationLink(value: subject.id) {
+        List {
+            Section {
+                Text("La barra compara tus tareas completadas con las previstas. La marca vertical indica la meta.")
+                    .font(.footnote).foregroundStyle(AppStyle.slate)
+                ForEach(store.course.subjects) { subject in
+                    DisclosureGroup(
+                        isExpanded: Binding(
+                            get: { expandedSubjects.contains(subject.id) },
+                            set: { isExpanded in
+                                if isExpanded { expandedSubjects.insert(subject.id) }
+                                else { expandedSubjects.remove(subject.id) }
+                            }
+                        )
+                    ) {
+                        ForEach(subject.units) { unit in
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Unidad \(unit.number) · \(unit.title)")
+                                    .font(.subheadline.bold()).foregroundStyle(AppStyle.navy)
+                                    .padding(.top, 8)
+                                ForEach(subject.tasks.filter { $0.unit == unit.number }) { task in
+                                    TaskRow(task: task)
+                                }
+                            }
+                            .padding(.vertical, 5)
+                        }
+                    } label: {
                 SubjectCard(subject: subject, done: store.completedCount(for: subject))
                     .padding(.vertical, 4)
+                    }
+                    .listRowBackground(Color.white)
+                    .listRowSeparatorTint(AppStyle.slate.opacity(0.25))
+                }
             }
         }
         .scrollContentBackground(.hidden)
@@ -345,9 +587,18 @@ struct SubjectDetailView: View {
     var body: some View {
         List {
             Section {
-                ProgressView(value: subject.tasks.isEmpty ? 0 : Double(store.completedCount(for: subject)) / Double(subject.tasks.count))
+                let done = store.completedCount(for: subject)
+                let expected = store.expectedTaskCount(for: subject)
+                let fraction = subject.tasks.isEmpty ? 0 : Double(done) / Double(subject.tasks.count)
+                let target = subject.tasks.isEmpty ? 0 : Double(expected) / Double(subject.tasks.count)
+                let standing = store.standing(done: done, expected: expected)
+                ProgressComparisonBar(actual: fraction, expected: target, color: standing.color)
                 Text("\(store.completedCount(for: subject)) de \(subject.tasks.count) tareas completadas")
                     .font(.subheadline).foregroundStyle(.secondary)
+                Text("\(expected) tareas previstas hasta la semana \(store.referenceWeek)")
+                    .font(.caption).foregroundStyle(.secondary)
+                Label(standing.detail, systemImage: standing.symbol)
+                    .font(.caption.bold()).foregroundStyle(standing.title == "Atrasada" ? AppStyle.navy : standing.color)
             }
             ForEach(subject.units) { unit in
                 Section("Unidad \(unit.number) · \(unit.title)") {
@@ -487,6 +738,11 @@ struct PlanView: View {
         }
         .padding(.vertical, 3)
     }
+}
+
+struct ProgressSnapshot: Codable {
+    let completed: [String]
+    let studyDays: [String]
 }
 
 struct ProgressBackup: FileDocument {
