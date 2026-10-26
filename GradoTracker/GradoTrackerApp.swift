@@ -527,12 +527,6 @@ struct DailyAssignment: Identifiable {
     var id: String { subjectCode }
 }
 
-struct PlannedTask: Identifiable {
-    let subject: CourseSubject
-    let task: CourseTask
-    var id: String { "\(subject.code)|\(task.id)" }
-}
-
 enum WeeklyStudyPlan {
     static func assignments(forWeekday weekday: Int) -> [DailyAssignment] {
         switch weekday {
@@ -749,9 +743,6 @@ struct TodayView: View {
                     }
                 }
 
-                if !isFriday && !assignments.isEmpty {
-                    DailyTaskList(assignments: assignments)
-                }
                 if isFriday { FridayNotesView() }
 
                 HStack(alignment: .top, spacing: 12) {
@@ -846,12 +837,27 @@ struct DailyAssignmentCard: View {
     @EnvironmentObject private var store: GradeStore
     let assignment: DailyAssignment
     let subject: CourseSubject
+    @State private var visibleTaskIDs: [String] = []
 
     private var done: Int { store.completedCount(for: subject) }
     private var expected: Int { store.expectedTaskCount(for: subject) }
     private var fraction: Double { subject.tasks.isEmpty ? 0 : Double(done) / Double(subject.tasks.count) }
     private var target: Double { subject.tasks.isEmpty ? 0 : Double(expected) / Double(subject.tasks.count) }
     private var standing: ProgressStanding { store.standing(done: done, expected: expected, subject: subject) }
+    private var availableTasks: [CourseTask] {
+        assignment.period.contains("atrasadas")
+            ? store.overdueTasks(for: subject)
+            : store.nextTasks(for: subject, limit: subject.tasks.count)
+    }
+    private var visibleTasks: [CourseTask] {
+        let tasksByID = Dictionary(uniqueKeysWithValues: subject.tasks.map { ($0.id, $0) })
+        return visibleTaskIDs.compactMap { tasksByID[$0] }
+    }
+    private var firstPendingTask: CourseTask? { visibleTasks.first { !store.isComplete($0) } }
+
+    private func loadNextBatch() {
+        visibleTaskIDs = Array(availableTasks.prefix(5)).map(\.id)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 11) {
@@ -875,101 +881,43 @@ struct DailyAssignmentCard: View {
 
             Divider()
 
-            if assignment.period.contains("atrasadas") {
-                Label("PENDIENTES PARA RECUPERAR", systemImage: "exclamationmark.circle.fill")
-                    .font(.caption.bold()).foregroundStyle(.red)
-                ForEach(store.overdueTasks(for: subject)) { TaskRow(task: $0) }
-            } else {
-                Label("Asignatura programada para hoy", systemImage: "books.vertical")
+            if let firstPendingTask {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("ABRE ESTO PRIMERO")
+                        .font(.caption.bold()).foregroundStyle(.black)
+                    Text(firstPendingTask.title)
+                        .font(.title3.bold()).foregroundStyle(AppStyle.navy)
+                    Text(firstPendingTask.typeName + " · Unidad \(firstPendingTask.unit) · \(firstPendingTask.minutes) min")
+                        .font(.caption).foregroundStyle(AppStyle.slate)
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(AppStyle.yellow)
+                Text("Y sigues por aquí mientras te dure la hora")
                     .font(.caption).foregroundStyle(AppStyle.slate)
+                ForEach(visibleTasks) { task in
+                    TaskRow(task: task)
+                }
+                if visibleTaskIDs.count == 5 {
+                    Text("Al completar estas cinco, aparecerá el siguiente grupo de esta asignatura.")
+                        .font(.caption).foregroundStyle(AppStyle.slate)
+                }
+            } else if visibleTasks.isEmpty {
+                Text(assignment.period.contains("atrasadas") ? "No quedan tareas atrasadas." : "No quedan tareas pendientes para esta asignatura.")
+                    .font(.subheadline).foregroundStyle(AppStyle.teal)
+            } else {
+                Label("Has completado el grupo. Ya no quedan tareas pendientes.", systemImage: "checkmark.seal.fill")
+                    .font(.subheadline.bold()).foregroundStyle(AppStyle.teal)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .background(.white, in: RoundedRectangle(cornerRadius: 5))
         .overlay(RoundedRectangle(cornerRadius: 5).stroke(AppStyle.navy, lineWidth: 1.5))
-    }
-}
-
-struct DailyTaskList: View {
-    @EnvironmentObject private var store: GradeStore
-    let assignments: [DailyAssignment]
-    @State private var visibleTaskIDs: [String] = []
-
-    private var taskBuckets: [[PlannedTask]] {
-        assignments.compactMap { assignment in
-            guard let subject = store.course.subjects.first(where: { $0.code == assignment.subjectCode }) else { return nil }
-            return store.nextTasks(for: subject, limit: subject.tasks.count).map { PlannedTask(subject: subject, task: $0) }
-        }
-    }
-
-    private var nextBatch: [PlannedTask] {
-        let buckets = taskBuckets
-        var result: [PlannedTask] = []
-        var index = 0
-        while buckets.contains(where: { index < $0.count }) {
-            for bucket in buckets where index < bucket.count { result.append(bucket[index]) }
-            index += 1
-        }
-        return result
-    }
-
-    private var allDayTasks: [PlannedTask] {
-        var tasks: [PlannedTask] = []
-        for assignment in assignments {
-            guard let subject = store.course.subjects.first(where: { $0.code == assignment.subjectCode }) else { continue }
-            tasks.append(contentsOf: subject.tasks.map { PlannedTask(subject: subject, task: $0) })
-        }
-        return tasks
-    }
-
-    private var visibleTasks: [PlannedTask] {
-        let tasksByID = Dictionary(uniqueKeysWithValues: allDayTasks.map { ($0.id, $0) })
-        return visibleTaskIDs.compactMap { tasksByID[$0] }
-    }
-
-    private var firstPending: PlannedTask? { visibleTasks.first { !store.isComplete($0.task) } }
-
-    private func loadNextBatch() {
-        visibleTaskIDs = Array(nextBatch.prefix(5)).map(\.id)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("TAREAS DE HOY").font(.caption.bold()).tracking(0.5).foregroundStyle(AppStyle.slate)
-            if let firstPending {
-                Label("ABRE ESTO PRIMERO · \(firstPending.subject.abbr)", systemImage: "arrow.up.right.square.fill")
-                    .font(.caption.bold()).foregroundStyle(AppStyle.pink)
-                Text(firstPending.task.title).font(.title3.bold()).foregroundStyle(AppStyle.navy)
-                Text("Hasta cinco tareas. Al completar el grupo aparecerán las siguientes.")
-                    .font(.caption).foregroundStyle(AppStyle.slate)
-            } else if visibleTasks.isEmpty {
-                Text("No quedan tareas pendientes para las asignaturas de hoy.")
-                    .font(.subheadline).foregroundStyle(AppStyle.teal)
-            } else {
-                Label("Has completado todas las tareas pendientes de hoy", systemImage: "checkmark.seal.fill")
-                    .font(.subheadline.bold()).foregroundStyle(AppStyle.teal)
-            }
-
-            ForEach(visibleTasks) { planned in
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(planned.subject.abbr.uppercased()).font(.caption2.bold()).foregroundStyle(AppStyle.slate)
-                    TaskRow(task: planned.task)
-                }
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white, in: RoundedRectangle(cornerRadius: 5))
-        .overlay(RoundedRectangle(cornerRadius: 5).stroke(AppStyle.navy, lineWidth: 1.5))
         .onAppear { if visibleTaskIDs.isEmpty { loadNextBatch() } }
-        .onChange(of: assignments.map(\.subjectCode)) { _, _ in
-            visibleTaskIDs = []
-            loadNextBatch()
-        }
         .onChange(of: store.completed) { _, _ in
             guard !visibleTaskIDs.isEmpty,
-                  visibleTaskIDs.allSatisfy({ id in allDayTasks.first(where: { $0.id == id }).map { store.isComplete($0.task) } ?? false }) else { return }
+                  visibleTaskIDs.allSatisfy({ store.completed.contains($0) }) else { return }
             let finishedBatch = visibleTaskIDs
             loadNextBatch()
             if visibleTaskIDs.isEmpty { visibleTaskIDs = finishedBatch }
