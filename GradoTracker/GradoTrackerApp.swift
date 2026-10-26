@@ -915,10 +915,12 @@ struct DailyTaskList: View {
     }
 
     private var allDayTasks: [PlannedTask] {
-        assignments.flatMap { assignment in
-            guard let subject = store.course.subjects.first(where: { $0.code == assignment.subjectCode }) else { return [] }
-            return subject.tasks.map { PlannedTask(subject: subject, task: $0) }
+        var tasks: [PlannedTask] = []
+        for assignment in assignments {
+            guard let subject = store.course.subjects.first(where: { $0.code == assignment.subjectCode }) else { continue }
+            tasks.append(contentsOf: subject.tasks.map { PlannedTask(subject: subject, task: $0) })
         }
+        return tasks
     }
 
     private var visibleTasks: [PlannedTask] {
@@ -961,11 +963,11 @@ struct DailyTaskList: View {
         .background(.white, in: RoundedRectangle(cornerRadius: 5))
         .overlay(RoundedRectangle(cornerRadius: 5).stroke(AppStyle.navy, lineWidth: 1.5))
         .onAppear { if visibleTaskIDs.isEmpty { loadNextBatch() } }
-        .onChange(of: assignments.map(\.subjectCode)) { _ in
+        .onChange(of: assignments.map(\.subjectCode)) { _, _ in
             visibleTaskIDs = []
             loadNextBatch()
         }
-        .onChange(of: store.completed) { _ in
+        .onChange(of: store.completed) { _, _ in
             guard !visibleTaskIDs.isEmpty,
                   visibleTaskIDs.allSatisfy({ id in allDayTasks.first(where: { $0.id == id }).map { store.isComplete($0.task) } ?? false }) else { return }
             let finishedBatch = visibleTaskIDs
