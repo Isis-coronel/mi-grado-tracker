@@ -339,11 +339,14 @@ final class GradeStore: ObservableObject {
     }
 
     func nextTask(for subject: CourseSubject, throughWeek: Int? = nil) -> CourseTask? {
-        let eligibleTasks = subject.tasks.filter { task in
-            throughWeek.map { task.week <= $0 } ?? true
-        }
-        return eligibleTasks.first { !isComplete($0) && !$0.optional }
-            ?? eligibleTasks.first { !isComplete($0) }
+        nextTasks(for: subject, throughWeek: throughWeek, limit: 1).first
+    }
+
+    func nextTasks(for subject: CourseSubject, throughWeek: Int? = nil, limit: Int = 5) -> [CourseTask] {
+        let eligible = subject.tasks.filter { task in throughWeek.map { task.week <= $0 } ?? true }
+        let required = eligible.filter { !isComplete($0) && !$0.optional }
+        let pending = required.isEmpty ? eligible.filter { !isComplete($0) } : required
+        return Array(pending.prefix(limit))
     }
 
     var catchUpAssignments: [DailyAssignment] {
@@ -839,15 +842,21 @@ struct DailyAssignmentCard: View {
     @EnvironmentObject private var store: GradeStore
     let assignment: DailyAssignment
     let subject: CourseSubject
+    @State private var visibleTaskIDs: [String] = []
 
     private var done: Int { store.completedCount(for: subject) }
     private var expected: Int { store.expectedTaskCount(for: subject) }
     private var fraction: Double { subject.tasks.isEmpty ? 0 : Double(done) / Double(subject.tasks.count) }
     private var target: Double { subject.tasks.isEmpty ? 0 : Double(expected) / Double(subject.tasks.count) }
     private var standing: ProgressStanding { store.standing(done: done, expected: expected, subject: subject) }
-    private var nextTask: CourseTask? {
-        let throughWeek = assignment.period.hasPrefix("Pendiente") ? store.currentCourseWeek : nil
-        return store.nextTask(for: subject, throughWeek: throughWeek)
+    private var visibleTasks: [CourseTask] {
+        visibleTaskIDs.compactMap { id in subject.tasks.first(where: { $0.id == id }) }
+    }
+    private var taskLimit: Int? { assignment.period.hasPrefix("Pendiente") ? nil : 5 }
+
+    private func loadNextBatch() {
+        guard let taskLimit else { return }
+        visibleTaskIDs = store.nextTasks(for: subject, limit: taskLimit).map(\.id)
     }
 
     var body: some View {
@@ -876,29 +885,35 @@ struct DailyAssignmentCard: View {
                 Label("PENDIENTES PARA RECUPERAR", systemImage: "exclamationmark.circle.fill")
                     .font(.caption.bold()).foregroundStyle(.red)
                 ForEach(store.overdueTasks(for: subject)) { TaskRow(task: $0) }
-            } else if let nextTask {
-                Label("SIGUIENTE TAREA", systemImage: "arrow.up.right.square.fill")
+            } else if let firstPending = visibleTasks.first(where: { !store.isComplete($0) }) {
+                Label("ABRE ESTO PRIMERO", systemImage: "arrow.up.right.square.fill")
                     .font(.caption.bold()).foregroundStyle(AppStyle.pink)
-                Text(nextTask.title)
-                    .font(.title3.bold()).foregroundStyle(AppStyle.navy)
-                Text("\(nextTask.typeName) · Unidad \(nextTask.unit) · Semana \(nextTask.week) · \(nextTask.minutes) min\(nextTask.optional ? " · opcional" : "")")
+                Text(firstPending.title).font(.title3.bold()).foregroundStyle(AppStyle.navy)
+                Text("Siguientes \(visibleTasks.count) tareas. Al completar este grupo aparecerá el siguiente.")
                     .font(.caption).foregroundStyle(AppStyle.slate)
-                Button {
-                    store.toggle(nextTask)
-                } label: {
-                    Label("Marcar como hecha y mostrar la siguiente", systemImage: "checkmark.circle.fill")
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(visibleTasks) { task in TaskRow(task: task) }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(AppStyle.teal)
             } else {
-                Label("Todas las tareas de esta asignatura están hechas", systemImage: "checkmark.seal.fill")
+                Label(visibleTasks.isEmpty ? "No quedan tareas pendientes" : "Grupo completado", systemImage: "checkmark.seal.fill")
                     .font(.subheadline.bold()).foregroundStyle(AppStyle.teal)
+                if !visibleTasks.isEmpty {
+                    ForEach(visibleTasks) { task in TaskRow(task: task) }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .background(.white, in: RoundedRectangle(cornerRadius: 5))
         .overlay(RoundedRectangle(cornerRadius: 5).stroke(AppStyle.navy, lineWidth: 1.5))
+        .onAppear { if visibleTaskIDs.isEmpty { loadNextBatch() } }
+        .onChange(of: store.completed) { _ in
+            guard taskLimit != nil, !visibleTaskIDs.isEmpty,
+                  visibleTaskIDs.allSatisfy({ store.completed.contains($0) }) else { return }
+            let previousIDs = visibleTaskIDs
+            loadNextBatch()
+            if visibleTaskIDs.isEmpty { visibleTaskIDs = previousIDs }
+        }
     }
 }
 
