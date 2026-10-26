@@ -159,8 +159,8 @@ final class GradeStore: ObservableObject {
             return end < today
         })?.n ?? 1
     }
-    func courseWeek(containing date: Date) -> CourseWeek? {
-        let day = Calendar.current.startOfDay(for: date)
+    func courseWeek(containing selectedDate: Date) -> CourseWeek? {
+        let day = Calendar.current.startOfDay(for: selectedDate)
         if let match = course.weeks.first(where: { week in
             guard let start = date(from: week.s), let end = date(from: week.e) else { return false }
             return day >= start && day <= end
@@ -348,17 +348,17 @@ final class GradeStore: ObservableObject {
         }
     }
 
-    func assignments(for date: Date) -> [DailyAssignment] {
-        if isFrozen(date) { return [] }
-        let iso = dateKey(for: date)
+    func assignments(for targetDate: Date) -> [DailyAssignment] {
+        if isFrozen(targetDate) { return [] }
+        let iso = dateKey(for: targetDate)
         if iso < "2026-09-16" {
             if iso == "2026-09-15" { return [DailyAssignment(period: "Inglés · preparación", subjectCode: "ELAR25")] }
             return []
         }
         let calendar = Calendar.current
-        let weekday = calendar.component(.weekday, from: date)
-        let weekStart = calendar.dateInterval(of: .weekOfYear, for: date)?.start ?? date
-        let frozenBefore = frozenDays.compactMap(date(from:)).filter { $0 >= weekStart && $0 < calendar.startOfDay(for: date) }.count
+        let weekday = calendar.component(.weekday, from: targetDate)
+        let weekStart = calendar.dateInterval(of: .weekOfYear, for: targetDate)?.start ?? targetDate
+        let frozenBefore = frozenDays.compactMap(date(from:)).filter { $0 >= weekStart && $0 < calendar.startOfDay(for: targetDate) }.count
         let targetIndex = weekday == 1 ? 6 : weekday - 2
         let planIndex = targetIndex - frozenBefore
         if (0...3).contains(planIndex) { return WeeklyStudyPlan.assignments(forWeekday: planIndex + 2) }
@@ -1127,7 +1127,7 @@ struct TaskRow: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(task.title).foregroundStyle(store.isComplete(task) ? .secondary : .primary).strikethrough(store.isComplete(task))
                         Text("\(task.typeName) · Unidad \(task.unit) · Semana \(task.week) · \(task.minutes) min\(task.optional ? " · opcional" : "") · hasta \(deadline)")
-                            .font(.caption).foregroundStyle(isOverdue && !store.isComplete(task) ? .red : .secondary)
+                            .font(.caption).foregroundStyle(isOverdue && !store.isComplete(task) ? Color.red : Color.primary.opacity(0.65))
                     }
                     Spacer(minLength: 0)
                 }
@@ -1183,7 +1183,7 @@ struct FridayNotesView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Apuntes de unidades cerradas").font(.title3.bold()).foregroundStyle(AppStyle.navy)
             if closed.isEmpty { Text("Aún no hay unidades con todas las tareas y una autoevaluación registradas.").font(.subheadline).foregroundStyle(AppStyle.slate) }
-            ForEach(Array(closed.enumerated()), id: \.offset) { _, pair in UnitNotesEditor(subject: pair.0, unit: pair.1) }
+            ForEach(Array(closed.enumerated()), id: \.offset) { entry in UnitNotesEditor(subject: entry.element.0, unit: entry.element.1) }
         }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background(.white, in: RoundedRectangle(cornerRadius: 5))
     }
 }
