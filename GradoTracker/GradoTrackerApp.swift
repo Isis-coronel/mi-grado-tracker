@@ -91,6 +91,19 @@ final class GradeStore: ObservableObject {
     var totalTasks: Int { course.subjects.reduce(0) { $0 + $1.tasks.count } }
     var completedCount: Int { completed.count }
     var progress: Double { totalTasks == 0 ? 0 : Double(completedCount) / Double(totalTasks) }
+    var currentCourseWeek: Int {
+        let today = Calendar.current.startOfDay(for: Date())
+        if let activeWeek = course.weeks.first(where: { week in
+            guard let start = date(from: week.s), let end = date(from: week.e) else { return false }
+            return today >= start && today <= end
+        }) {
+            return activeWeek.n
+        }
+        return course.weeks.last(where: { week in
+            guard let end = date(from: week.e) else { return false }
+            return end < today
+        })?.n ?? 1
+    }
     var referenceWeek: Int {
         let today = Calendar.current.startOfDay(for: Date())
         if let activeWeek = course.weeks.first(where: { week in
@@ -148,6 +161,28 @@ final class GradeStore: ObservableObject {
 
     func completedCount(for subject: CourseSubject) -> Int {
         subject.tasks.filter { completed.contains($0.id) }.count
+    }
+
+    func nextTask(for subject: CourseSubject, throughWeek: Int? = nil) -> CourseTask? {
+        let eligibleTasks = subject.tasks.filter { task in
+            throughWeek.map { task.week <= $0 } ?? true
+        }
+        return eligibleTasks.first { !isComplete($0) && !$0.optional }
+            ?? eligibleTasks.first { !isComplete($0) }
+    }
+
+    var catchUpAssignments: [DailyAssignment] {
+        course.subjects
+            .compactMap { subject -> (CourseSubject, CourseTask)? in
+                guard let task = nextTask(for: subject, throughWeek: currentCourseWeek) else { return nil }
+                return (subject, task)
+            }
+            .sorted { lhs, rhs in
+                if lhs.1.week != rhs.1.week { return lhs.1.week < rhs.1.week }
+                return lhs.0.name < rhs.0.name
+            }
+            .prefix(2)
+            .map { DailyAssignment(period: "Pendiente prioritario", subjectCode: $0.0.code) }
     }
 
     func restoreProgress(from data: Data) throws {
@@ -264,6 +299,36 @@ enum AppSection: String, CaseIterable, Identifiable {
     }
 }
 
+struct DailyAssignment: Identifiable {
+    let period: String
+    let subjectCode: String
+    var id: String { subjectCode }
+}
+
+enum WeeklyStudyPlan {
+    static func assignments(forWeekday weekday: Int) -> [DailyAssignment] {
+        switch weekday {
+        case 2: [
+            DailyAssignment(period: "Primera hora · fuerte", subjectCode: "ELAR01"),
+            DailyAssignment(period: "Segunda hora · ligera", subjectCode: "ELAR18")
+        ]
+        case 3: [
+            DailyAssignment(period: "Primera hora · fuerte", subjectCode: "ELAR02"),
+            DailyAssignment(period: "Segunda hora · ligera", subjectCode: "ELAR23")
+        ]
+        case 4: [
+            DailyAssignment(period: "Primera hora · fuerte", subjectCode: "ELAR03"),
+            DailyAssignment(period: "Segunda hora · ligera", subjectCode: "ELAR05")
+        ]
+        case 5: [
+            DailyAssignment(period: "Primera hora · fuerte", subjectCode: "ELAR04"),
+            DailyAssignment(period: "Segunda hora · ligera", subjectCode: "ELAR07")
+        ]
+        default: []
+        }
+    }
+}
+
 struct RootView: View {
     @EnvironmentObject private var store: GradeStore
     @State private var selection: AppSection? = .today
@@ -343,7 +408,38 @@ struct RootView: View {
 
 struct TodayView: View {
     @EnvironmentObject private var store: GradeStore
-    private let columns = [GridItem(.flexible()), GridItem(.flexible())]
+
+    private var weekday: Int { Calendar.current.component(.weekday, from: Date()) }
+    private var isFriday: Bool { weekday == 6 }
+    private var isWeekend: Bool { weekday == 1 || weekday == 7 }
+    private var assignments: [DailyAssignment] {
+        if isFriday { return store.catchUpAssignments }
+        if isWeekend { return [] }
+        return WeeklyStudyPlan.assignments(forWeekday: weekday)
+    }
+    private var todayTitle: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "es_ES")
+        formatter.dateFormat = "EEEE d 'de' MMMM"
+        let value = formatter.string(from: Date())
+        return "\(value.prefix(1).uppercased())\(value.dropFirst())"
+    }
+    private var courseWeekTitle: String {
+        guard let week = store.course.weeks.first(where: { $0.n == store.currentCourseWeek }) else {
+            return "Semana del curso"
+        }
+        return "Semana \(week.n) de \(store.course.weeks.count) · \(week.l)"
+    }
+    private var dailyHeading: String {
+        if isFriday { return "Pendientes y apuntes" }
+        if isWeekend { return "Día libre" }
+        return "Lo siguiente que tienes que abrir"
+    }
+    private var dailyDescription: String {
+        if isFriday { return "Viernes de repaso: aquí aparecen los dos pendientes más antiguos." }
+        if isWeekend { return "Hoy no hay asignaturas programadas en tu plan. Descansa." }
+        return "Abre el recurso indicado en UNIVERSAE: primero la primera hora y después la segunda. Al marcar una tarea, aparecerá la siguiente."
+    }
 
     var body: some View {
         ScrollView {
@@ -352,10 +448,8 @@ struct TodayView: View {
                     VStack(alignment: .leading, spacing: 5) {
                         Label("UNIVERSAE · AUTOMATIZACIÓN Y ROBÓTICA", systemImage: "square.fill")
                             .font(.caption.bold()).tracking(0.5).foregroundStyle(AppStyle.navy)
-                        Text("Tu grado, a tu ritmo")
-                            .font(.largeTitle.bold()).foregroundStyle(AppStyle.navy)
-                        Text("Curso 2026–2027 · sigue avanzando cada día")
-                            .foregroundStyle(AppStyle.slate)
+                        Text(todayTitle).font(.largeTitle.bold()).foregroundStyle(AppStyle.navy)
+                        Text(courseWeekTitle).foregroundStyle(AppStyle.slate)
                     }
                     Spacer(minLength: 8)
                     Text("\(store.completedCount) de \(store.totalTasks)")
@@ -365,58 +459,71 @@ struct TodayView: View {
                         .foregroundStyle(AppStyle.navy)
                 }
 
-                HStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text(dailyHeading).font(.title2.bold()).foregroundStyle(AppStyle.navy)
+                        Spacer()
+                    }
+                    Text(dailyDescription).font(.subheadline).foregroundStyle(AppStyle.slate)
+
+                    if assignments.isEmpty {
+                        VStack(spacing: 8) {
+                            Image(systemName: isFriday ? "checkmark.circle" : "sun.max")
+                                .font(.title2).foregroundStyle(AppStyle.teal)
+                            Text(isFriday ? "No quedan pendientes prioritarios" : "Hoy toca descansar")
+                                .font(.headline.bold()).foregroundStyle(AppStyle.navy)
+                            Text(isFriday
+                                ? "Las tareas de las semanas terminadas están al día."
+                                : "El sábado y el domingo no hay asignaturas en la rotación semanal.")
+                                .font(.subheadline).foregroundStyle(AppStyle.slate)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 150)
+                        .padding(16)
+                        .background(.white, in: RoundedRectangle(cornerRadius: 5))
+                        .overlay(RoundedRectangle(cornerRadius: 5).stroke(AppStyle.navy, lineWidth: 1.5))
+                    } else {
+                        VStack(spacing: 12) {
+                            ForEach(assignments) { assignment in
+                                if let subject = store.course.subjects.first(where: { $0.code == assignment.subjectCode }) {
+                                    DailyAssignmentCard(assignment: assignment, subject: subject)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                HStack(alignment: .top, spacing: 12) {
                     VStack(alignment: .leading, spacing: 8) {
                         Label("PROGRESO DEL GRADO", systemImage: "chart.bar.fill")
-                            .font(.caption.bold()).foregroundStyle(.white.opacity(0.72))
-                        Text(store.progress.formatted(.percent.precision(.fractionLength(0))))
-                            .font(.system(size: 38, weight: .heavy, design: .rounded)).foregroundStyle(.white)
+                            .font(.caption.bold()).foregroundStyle(AppStyle.slate)
+                        Text("\(store.completedCount) de \(store.totalTasks) · \(store.progress.formatted(.percent.precision(.fractionLength(0))))")
+                            .font(.headline.bold()).foregroundStyle(AppStyle.navy)
                         ProgressComparisonBar(
                             actual: store.progress,
                             expected: store.totalTasks == 0 ? 0 : Double(store.expectedTaskCount) / Double(store.totalTasks),
                             color: store.standing(done: store.completedCount, expected: store.expectedTaskCount).color
                         )
-                        Text("\(store.completedCount) hechas · \(store.expectedTaskCount) previstas hasta la semana \(store.referenceWeek)")
-                            .font(.subheadline).foregroundStyle(.white.opacity(0.78))
-                        Label(store.standing(done: store.completedCount, expected: store.expectedTaskCount).detail,
-                              systemImage: store.standing(done: store.completedCount, expected: store.expectedTaskCount).symbol)
-                            .font(.caption.bold()).foregroundStyle(.white)
-                        Text("La marca vertical indica la meta de la temporalización.")
-                            .font(.caption2).foregroundStyle(.white.opacity(0.68))
+                        Text("La marca vertical señala la meta de la temporalización.")
+                            .font(.caption).foregroundStyle(AppStyle.slate)
                     }
-                    Spacer(minLength: 16)
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 34, weight: .bold)).foregroundStyle(AppStyle.yellow)
-                        .padding(16).background(.white.opacity(0.08), in: Circle())
-                }
-                .padding(20)
-                .background(AppStyle.navy, in: RoundedRectangle(cornerRadius: 5))
-                .overlay(alignment: .bottomTrailing) {
-                    Rectangle().fill(AppStyle.pink).frame(width: 9, height: 9).offset(x: 4, y: 4)
-                }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 5))
+                    .overlay(RoundedRectangle(cornerRadius: 5).stroke(AppStyle.navy, lineWidth: 1.5))
 
-                StreakCard()
-
-                HStack(spacing: 12) {
-                    MetricCard(title: "Tareas hechas", value: "\(store.completedCount)", symbol: "checkmark.circle.fill", color: AppStyle.teal)
-                    MetricCard(title: "Asignaturas", value: "\(store.course.subjects.count)", symbol: "books.vertical.fill", color: AppStyle.yellow)
-                    MetricCard(title: "Semanas", value: "\(store.course.weeks.count)", symbol: "calendar", color: AppStyle.pink)
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("Tus asignaturas").font(.title2.bold()).foregroundStyle(AppStyle.navy)
-                        Spacer()
-                        Text("\(store.course.subjects.count) materias").font(.caption.bold()).foregroundStyle(AppStyle.slate)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("RACHA", systemImage: "flame.fill")
+                            .font(.caption.bold()).foregroundStyle(AppStyle.pink)
+                        Text("\(store.currentStreak) días")
+                            .font(.headline.bold()).foregroundStyle(AppStyle.navy)
+                        Text(store.currentStreak == 0 ? "Marca una tarea para iniciar la racha." : "Mejor: \(store.bestStreak) días")
+                            .font(.caption).foregroundStyle(AppStyle.slate)
                     }
-                    LazyVGrid(columns: columns, spacing: 12) {
-                        ForEach(store.course.subjects) { subject in
-                            NavigationLink(value: subject.id) {
-                                SubjectCard(subject: subject, done: store.completedCount(for: subject))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 5))
+                    .overlay(RoundedRectangle(cornerRadius: 5).stroke(AppStyle.navy, lineWidth: 1.5))
                 }
             }
             .padding(18)
@@ -425,6 +532,69 @@ struct TodayView: View {
         }
         .background(AppStyle.canvas)
         .navigationTitle("Mi día")
+    }
+}
+
+struct DailyAssignmentCard: View {
+    @EnvironmentObject private var store: GradeStore
+    let assignment: DailyAssignment
+    let subject: CourseSubject
+
+    private var done: Int { store.completedCount(for: subject) }
+    private var expected: Int { store.expectedTaskCount(for: subject) }
+    private var fraction: Double { subject.tasks.isEmpty ? 0 : Double(done) / Double(subject.tasks.count) }
+    private var target: Double { subject.tasks.isEmpty ? 0 : Double(expected) / Double(subject.tasks.count) }
+    private var standing: ProgressStanding { store.standing(done: done, expected: expected) }
+    private var nextTask: CourseTask? {
+        let throughWeek = assignment.period.hasPrefix("Pendiente") ? store.currentCourseWeek : nil
+        return store.nextTask(for: subject, throughWeek: throughWeek)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 11) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(assignment.period.uppercased())
+                        .font(.caption.bold()).tracking(0.5).foregroundStyle(AppStyle.slate)
+                    Text(subject.name)
+                        .font(.headline.bold()).foregroundStyle(AppStyle.navy)
+                }
+                Spacer(minLength: 8)
+                Text(standing.title.uppercased())
+                    .font(.caption2.bold()).foregroundStyle(standing.title == "Atrasada" ? AppStyle.navy : standing.color)
+                    .padding(.horizontal, 8).padding(.vertical, 5)
+                    .background(standing.color.opacity(0.18), in: RoundedRectangle(cornerRadius: 3))
+            }
+
+            ProgressComparisonBar(actual: fraction, expected: target, color: standing.color)
+            Text("\(done) de \(subject.tasks.count) hechas · \(expected) previstas hasta la semana \(store.referenceWeek)")
+                .font(.caption).foregroundStyle(AppStyle.slate)
+
+            Divider()
+
+            if let nextTask {
+                Label("SIGUIENTE TAREA", systemImage: "arrow.up.right.square.fill")
+                    .font(.caption.bold()).foregroundStyle(AppStyle.pink)
+                Text(nextTask.title)
+                    .font(.title3.bold()).foregroundStyle(AppStyle.navy)
+                Text("\(nextTask.typeName) · Unidad \(nextTask.unit) · Semana \(nextTask.week) · \(nextTask.minutes) min\(nextTask.optional ? " · opcional" : "")")
+                    .font(.caption).foregroundStyle(AppStyle.slate)
+                Button {
+                    store.toggle(nextTask)
+                } label: {
+                    Label("Marcar como hecha y mostrar la siguiente", systemImage: "checkmark.circle.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AppStyle.teal)
+            } else {
+                Label("Todas las tareas de esta asignatura están hechas", systemImage: "checkmark.seal.fill")
+                    .font(.subheadline.bold()).foregroundStyle(AppStyle.teal)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(.white, in: RoundedRectangle(cornerRadius: 5))
+        .overlay(RoundedRectangle(cornerRadius: 5).stroke(AppStyle.navy, lineWidth: 1.5))
     }
 }
 
