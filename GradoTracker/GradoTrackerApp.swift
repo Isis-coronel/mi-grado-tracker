@@ -326,7 +326,7 @@ final class GradeStore: ObservableObject {
         let key = dateKey(for: day)
         if key == "2026-10-12" || key == "2026-12-07" || (key >= "2026-12-23" && key <= "2027-01-06") || (key >= "2027-03-19" && key <= "2027-04-04") { return false }
         let spans = course.weeks.compactMap { week -> (Date, Date)? in
-            guard let start = date(from: week.s), let end = date(from: week.e) else { return nil }
+            guard let start = self.date(from: week.s), let end = self.date(from: week.e) else { return nil }
             return (start, end)
         }.sorted { $0.0 < $1.0 }
         guard let first = spans.first, let last = spans.last, day >= first.0, day <= last.1 else { return false }
